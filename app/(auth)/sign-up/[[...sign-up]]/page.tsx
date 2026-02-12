@@ -1,18 +1,5 @@
-import { SignUp } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function SignUpPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <SignUp
-        afterSignUpUrl="/onboarding"
-        signInUrl="/sign-in"
-        appearance={{
-          elements: {
-            rootBox: "mx-auto",
-            card: "shadow-xl",
-          },
-        }}
-      />
-    </div>
-  );
+  redirect("/?auth=signup");
 }

@@ -8,8 +8,8 @@ const isPrivateRoute = createRouteMatcher([
   "/onboarding(.*)",
 ]);
 
-export default clerkMiddleware((auth, req) => {
-  if (isPrivateRoute(req)) auth().protect();
+export default clerkMiddleware(async (auth, req) => {
+  if (isPrivateRoute(req)) await auth.protect();
 });
 
 export const config = {

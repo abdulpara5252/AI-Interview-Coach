@@ -139,7 +139,7 @@ export default function InterviewSessionPage() {
         </AlertDialog>
       </div>
 
-      {voice.callStatus === "idle" && (
+      {(voice.callStatus === "idle" || voice.callStatus === "connecting") && (
         <div className="rounded-lg border bg-card p-6 text-center">
           <p className="mb-4">Ready when you are. Click below to start the voice interview.</p>
           <Button
