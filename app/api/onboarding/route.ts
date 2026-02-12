@@ -18,6 +18,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const targetRole = typeof body.targetRole === "string" ? body.targetRole.trim() : "";
     const experience = typeof body.experience === "string" ? body.experience.trim() : "";
+    const sessionDuration = typeof body.sessionDuration === "number" ? body.sessionDuration : 30;
+    const voiceGender = typeof body.voiceGender === "string" ? body.voiceGender.trim() : "neutral";
 
     if (!targetRole || !ROLES.includes(targetRole as (typeof ROLES)[number])) {
       return NextResponse.json({ error: "Invalid target role" }, { status: 400 });
@@ -28,7 +30,12 @@ export async function POST(req: Request) {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { targetRole, experience },
+      data: { 
+        targetRole, 
+        experience,
+        sessionDuration,
+        voiceGender,
+      },
     });
 
     return NextResponse.json({ success: true });

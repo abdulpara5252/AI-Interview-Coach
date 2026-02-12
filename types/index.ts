@@ -6,6 +6,7 @@ export const ROLES = [
   "Data Scientist",
   "UX/UI Designer",
   "DevOps Engineer",
+  "Mobile Developer",
 ] as const;
 
 export type Role = (typeof ROLES)[number];
