@@ -37,82 +37,145 @@ export function QuestionFeedback({
 }: QuestionFeedbackProps) {
   if (!feedback) {
     return (
-      <AccordionItem value={`q-${index}`}>
-        <AccordionTrigger>Question {index + 1}</AccordionTrigger>
-        <AccordionContent>
-          <p className="text-muted-foreground text-sm">{questionText}</p>
-          <p className="text-muted-foreground text-sm mt-2">No feedback yet.</p>
+      <AccordionItem value={`q-${index}`} className="border-b border-slate-200">
+        <AccordionTrigger className="hover:no-underline py-4">
+          <span className="flex items-center gap-3 text-left">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+              {index + 1}
+            </span>
+            <span className="text-slate-700">{questionText.substring(0, 50)}...</span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="bg-slate-50 p-4 rounded-lg">
+          <p className="text-sm font-medium text-slate-900 mb-2">{questionText}</p>
+          <p className="text-sm text-slate-600">Feedback generation in progress...</p>
         </AccordionContent>
       </AccordionItem>
     );
   }
 
-  const { scores, grade, strengths, improvements, fillerWords, tip } = feedback;
+  const { scores, grade, strengths, improvements, fillerWords, tip, idealAnswerSummary } = feedback;
+
+  function getMetricColor(score: number) {
+    if (score >= 70) return "text-green-600";
+    if (score >= 50) return "text-yellow-600";
+    return "text-red-600";
+  }
 
   return (
-    <AccordionItem value={`q-${index}`}>
-      <AccordionTrigger className="hover:no-underline">
-        <span className="flex items-center gap-2">
-          Question {index + 1}
-          <Badge variant="secondary" className={getGradeColor(grade)}>
-            {grade}
-          </Badge>
-          <span className={getScoreColor(scores.contentAccuracy)}>
-            {feedback.overallScore}%
+    <AccordionItem value={`q-${index}`} className="border-b border-slate-200">
+      <AccordionTrigger className="hover:no-underline py-4 group">
+        <span className="flex items-center gap-3 text-left flex-1">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700 flex-shrink-0">
+            {index + 1}
           </span>
+          <span className="text-slate-700 flex-1 group-hover:text-slate-900 transition-colors">
+            {questionText.substring(0, 60)}
+            {questionText.length > 60 ? "..." : ""}
+          </span>
+          <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+            <Badge className={`${getGradeColor(grade)} font-bold`}>
+              {grade}
+            </Badge>
+            <span className={`font-bold ${getMetricColor(feedback.overallScore)}`}>
+              {feedback.overallScore}%
+            </span>
+          </div>
         </span>
       </AccordionTrigger>
-      <AccordionContent className="space-y-4">
-        <p className="text-sm font-medium">{questionText}</p>
-        <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-          <div>
-            <span className="text-muted-foreground">Content</span>
-            <p className={getScoreColor(scores.contentAccuracy)}>{scores.contentAccuracy}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Communication</span>
-            <p className={getScoreColor(scores.communication)}>{scores.communication}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Problem solving</span>
-            <p className={getScoreColor(scores.problemSolving)}>{scores.problemSolving}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Confidence</span>
-            <p className={getScoreColor(scores.confidence)}>{scores.confidence}</p>
-          </div>
+      <AccordionContent className="bg-slate-50 p-6 rounded-lg space-y-6">
+        <div>
+          <h4 className="font-semibold text-slate-900 mb-2">Full Question</h4>
+          <p className="text-sm text-slate-700 leading-relaxed">{questionText}</p>
         </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Content Accuracy", value: scores.contentAccuracy },
+            { label: "Communication", value: scores.communication },
+            { label: "Problem Solving", value: scores.problemSolving },
+            { label: "Confidence", value: scores.confidence },
+          ].map((metric, i) => (
+            <div key={i} className="bg-white rounded-lg p-3 border border-slate-200">
+              <p className="text-xs text-slate-600 font-medium mb-1">{metric.label}</p>
+              <p className={`text-2xl font-bold ${getMetricColor(metric.value)}`}>
+                {metric.value}
+              </p>
+              <div className="h-1 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    metric.value >= 70
+                      ? "bg-green-500"
+                      : metric.value >= 50
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
+                  }`}
+                  style={{ width: `${metric.value}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {idealAnswerSummary && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold text-slate-900 mb-2">Ideal Answer Summary</h4>
+            <p className="text-sm text-slate-700">{idealAnswerSummary}</p>
+          </div>
+        )}
+
         {strengths.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-green-600">Strengths</h4>
-            <ul className="list-inside list-disc text-sm">
+            <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-2">
+              ✓ Strengths
+            </h4>
+            <ul className="space-y-2">
               {strengths.map((s, i) => (
-                <li key={i}>{s}</li>
+                <li key={i} className="text-sm text-slate-700 flex gap-2">
+                  <span className="text-green-600 font-bold">•</span>
+                  <span>{s}</span>
+                </li>
               ))}
             </ul>
           </div>
         )}
+
         {improvements.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-amber-600">Improvements</h4>
-            <ul className="list-inside list-disc text-sm">
+            <h4 className="font-semibold text-orange-700 mb-2 flex items-center gap-2">
+              ↑ Areas for Improvement
+            </h4>
+            <ul className="space-y-2">
               {improvements.map((s, i) => (
-                <li key={i}>{s}</li>
+                <li key={i} className="text-sm text-slate-700 flex gap-2">
+                  <span className="text-orange-600 font-bold">•</span>
+                  <span>{s}</span>
+                </li>
               ))}
             </ul>
           </div>
         )}
+
         {fillerWords.count > 0 && (
-          <p className="text-muted-foreground text-sm">
-            Filler words: {fillerWords.count}
-            {fillerWords.examples.length > 0 &&
-              ` (e.g. ${fillerWords.examples.slice(0, 3).join(", ")})`}
-          </p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="font-semibold text-slate-900 mb-2">
+              Filler Words: {fillerWords.count}
+            </h4>
+            {fillerWords.examples.length > 0 && (
+              <p className="text-sm text-slate-700">
+                Examples:{" "}
+                {fillerWords.examples.slice(0, 3).join(", ")}
+                {fillerWords.examples.length > 3 && `, +${fillerWords.examples.length - 3} more`}
+              </p>
+            )}
+          </div>
         )}
+
         {tip && (
-          <p className="rounded-md bg-muted p-2 text-sm">
-            <strong>Tip:</strong> {tip}
-          </p>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h4 className="font-semibold text-green-900 mb-1">💡 Pro Tip</h4>
+            <p className="text-sm text-slate-700">{tip}</p>
+          </div>
         )}
       </AccordionContent>
     </AccordionItem>
