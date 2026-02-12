@@ -1,0 +1,894 @@
+---
+alwaysApply: true
+---
+
+# ============================================================
+# 1. PROJECT IDENTITY
+# ============================================================
+
+You are building "AI Interview Coach name is HirinAi" — a voice-powered SaaS platform
+where users practice technical and behavioral interviews with an AI
+voice agent (saraha), receive GPT-4o feedback scored across 4 dimensions,
+and track improvement over time on an analytics dashboard.
+
+Mission: Democratize interview prep by giving every job seeker a
+personal AI coach with real-time, actionable feedback — anytime, anywhere.
+
+## Core User Types
+- Job seekers (developers, PMs, designers, data scientists)
+- Career changers switching industries
+- Students doing first technical rounds
+- Bootcamp graduates
+- Senior professionals re-entering the market
+
+# ============================================================
+# 2. MANDATORY TECH STACK
+# ============================================================
+
+Never substitute these. Every implementation decision must align with this stack.
+
+| Layer              | Technology                         |
+|--------------------|------------------------------------|
+| Framework          | Next.js 14+ App Router (TypeScript) |
+| Database ORM       | Prisma                             |
+| Database           | PostgreSQL via Neon (serverless)   |
+| Auth               | Clerk (+ svix for webhooks)        |
+| Styling            | Tailwind CSS + Shadcn/ui           |
+| Data Fetching      | TanStack Query v5                  |
+| Voice Agent        | Vapi.ai Web SDK                    |
+| LLM                | OpenAI GPT-4o                      |
+| File Storage       | Uploadthing / S3                   |
+| Email              | Resend                             |
+| Charts             | Recharts                           |
+| Deployment         | Vercel                             |
+
+# ============================================================
+# 3. PROJECT FOLDER STRUCTURE
+# ============================================================
+
+```
+ai-interview-coach/
+├── app/
+│   ├── (auth)/
+│   │   ├── sign-in/[[...sign-in]]/page.tsx
+│   │   └── sign-up/[[...sign-up]]/page.tsx
+│   ├── (dashboard)/
+│   │   ├── dashboard/page.tsx
+│   │   ├── interview/
+│   │   │   ├── new/page.tsx
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx            ← Live voice session
+│   │   │       └── feedback/page.tsx
+│   │   ├── sessions/page.tsx
+│   │   └── profile/page.tsx
+│   ├── (marketing)/
+│   │   ├── page.tsx                    ← Landing page
+│   │   └── pricing/page.tsx
+│   ├── report/[shareToken]/page.tsx    ← Public, no auth required
+│   └── api/
+│       ├── webhook/clerk/route.ts      ← PUBLIC route (no auth middleware)
+│       ├── session/
+│       │   ├── create/route.ts
+│       │   └── complete/route.ts
+│       ├── feedback/[id]/route.ts
+│       ├── sessions/route.ts
+│       ├── voice/token/route.ts
+│       ├── dashboard/stats/route.ts
+│       └── report/[shareToken]/route.ts
+├── components/
+│   ├── ui/                             ← Shadcn (never edit directly)
+│   ├── interview/
+│   │   ├── VoiceAgent.tsx
+│   │   ├── TranscriptPanel.tsx
+│   │   ├── SessionTimer.tsx
+│   │   └── QuestionCard.tsx
+│   ├── dashboard/
+│   │   ├── ScoreTrendChart.tsx
+│   │   ├── SessionHeatmap.tsx
+│   │   ├── RadarChart.tsx
+│   │   └── StatsCards.tsx
+│   └── feedback/
+│       ├── FeedbackReport.tsx
+│       └── QuestionFeedback.tsx
+├── hooks/
+│   ├── useVoiceAgent.ts                ← Vapi SDK — all voice logic lives here
+│   ├── useSession.ts
+│   ├── useDashboard.ts
+│   └── useSessions.ts
+├── lib/
+│   ├── prisma.ts                       ← Singleton PrismaClient
+│   ├── openai.ts                       ← OpenAI client
+│   ├── vapi.ts                         ← Voice agent helpers
+│   └── utils.ts
+├── types/
+│   └── index.ts
+├── prisma/
+│   └── schema.prisma
+├── middleware.ts                       ← Clerk route protection
+├── .env.local
+└── next.config.ts
+```
+
+# ============================================================
+# 4. COMPLETE PRISMA SCHEMA
+# ============================================================
+
+Use this exact schema. Do not alter model names or field names.
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  clerkId     String    @unique
+  email       String    @unique
+  name        String?
+  avatarUrl   String?
+  targetRole  String?
+  experience  String?   // junior | mid | senior
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    Session[]
+  preferences UserPreference?
+  goals       Goal[]
+}
+
+model UserPreference {
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredDuration Int     @default(30)
+  voiceGender       String  @default("neutral")
+  emailReports      Boolean @default(true)
+  weeklyDigest      Boolean @default(true)
+  pushToTalk        Boolean @default(false)
+}
+
+model Session {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          String
+  interviewType String
+  difficulty    String
+  duration      Int
+  status        String     @default("in_progress") // in_progress | completed | abandoned
+  overallScore  Float?
+  grade         String?
+  transcript    Json?      // [{ speaker, text, timestamp }]
+  feedback      Json?      // structured feedback object
+  audioUrl      String?
+  shareToken    String?    @unique @default(cuid())
+  isPublic      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  completedAt   DateTime?
+  questions     Question[]
+  answers       Answer[]
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  text        String
+  type        String   // technical | behavioral | system_design
+  difficulty  String
+  category    String
+  idealAnswer String?
+  order       Int
+  answers     Answer[]
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  transcript String
+  audioUrl   String?
+  score      Float?
+  feedback   Json?
+  duration   Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  targetScore Float
+  role        String?
+  deadline    DateTime?
+  achieved    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+```
+
+After ANY schema change:
+1. `npx prisma migrate dev --name <description>`
+2. `npx prisma generate`
+3. Verify in `npx prisma studio`
+
+# ============================================================
+# 5. ENVIRONMENT VARIABLES
+# ============================================================
+
+Required in `.env.local` — never commit this file:
+
+```bash
+# Database (Neon PostgreSQL)
+DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# Vapi Voice Agent
+VAPI_API_KEY=...                          # SERVER ONLY — never expose to client
+NEXT_PUBLIC_VAPI_PUBLIC_KEY=...           # Client-safe key for SDK init
+
+# File Storage (Uploadthing)
+UPLOADTHING_SECRET=sk_live_...
+NEXT_PUBLIC_UPLOADTHING_APP_ID=...
+
+# Email (Resend)
+RESEND_API_KEY=re_...
+FROM_EMAIL=noreply@yourapp.com
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+# ============================================================
+# 6. CORE CODING RULES
+# ============================================================
+
+## TypeScript
+- Always use strict TypeScript. No `any` unless absolutely unavoidable — use `unknown` instead.
+- Define all shared types in `types/index.ts` and import from there.
+- Use `async/await` — never raw `.then()` chains.
+- Export types/interfaces near their usage or from `types/index.ts`.
+
+## Next.js App Router
+- Server Components by default.
+- Add `"use client"` ONLY when you need: hooks, event handlers, browser APIs, or TanStack Query.
+- API routes return `NextResponse.json(data, { status: N })` — always include status codes.
+- Validate all request bodies before use. Return 400 for malformed input.
+- Use `auth()` from `@clerk/nextjs/server` in server components and API routes.
+- Use `useAuth()` / `useUser()` from `@clerk/nextjs` in client components only.
+
+## Protected Route Middleware (middleware.ts)
+```typescript
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isPrivateRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/interview(.*)",
+  "/sessions(.*)",
+  "/profile(.*)",
+  "/onboarding(.*)",
+]);
+
+export default clerkMiddleware((auth, req) => {
+  if (isPrivateRoute(req)) auth().protect();
+});
+
+export const config = {
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+};
+```
+
+Public routes: `/`, `/sign-in`, `/sign-up`, `/pricing`, `/api/webhook/clerk`, `/report/(.*)`
+
+## Standard Protected API Route Pattern
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(req: Request) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { clerkId } });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const body = await req.json();
+    // ... logic here
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("[ROUTE_NAME_ERROR]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+```
+
+## Prisma Rules
+- Always import from `@/lib/prisma` — NEVER `new PrismaClient()` directly.
+- Use `findUnique` when expecting 0 or 1 result.
+- Use `prisma.$transaction([...])` when multiple writes must succeed together.
+- Rely on cascade deletes — deleting a Session auto-deletes Questions and Answers.
+- Use `upsert` for create-or-update patterns (e.g., UserPreference).
+
+## Singleton Prisma Client (lib/prisma.ts)
+```typescript
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["query"] : [],
+  });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```
+
+## Error Handling
+- All API routes must have try/catch. Return `{ error: message }` with correct HTTP status.
+- All TanStack Query hooks must handle `isError` with a toast or inline error UI.
+- OpenAI calls must have JSON parse fallbacks — GPT output is not always valid JSON.
+- Vapi SDK errors must be caught in `useVoiceAgent` and surfaced as state.
+- Never log sensitive data (tokens, keys, user PII).
+
+# ============================================================
+# 7. AUTHENTICATION & CLERK RULES
+# ============================================================
+
+## Webhook Route (app/api/webhook/clerk/route.ts)
+- This route MUST be public — no auth middleware applied.
+- Always verify svix signature before processing any event.
+- Handle: `user.created` → create User in Prisma
+- Handle: `user.updated` → update email, name, avatarUrl by clerkId
+- Handle: `user.deleted` → delete user by clerkId (cascades to sessions)
+
+```typescript
+import { Webhook } from "svix";
+import { headers } from "next/headers";
+import { WebhookEvent } from "@clerk/nextjs/server";
+
+export async function POST(req: Request) {
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET!;
+  const headerPayload = headers();
+  const body = await req.text();
+  const wh = new Webhook(WEBHOOK_SECRET);
+  let evt: WebhookEvent;
+
+  try {
+    evt = wh.verify(body, {
+      "svix-id": headerPayload.get("svix-id")!,
+      "svix-timestamp": headerPayload.get("svix-timestamp")!,
+      "svix-signature": headerPayload.get("svix-signature")!,
+    }) as WebhookEvent;
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Process evt.type: "user.created" | "user.updated" | "user.deleted"
+  return NextResponse.json({ success: true });
+}
+```
+
+## Auth Redirects
+- After sign-up → `/onboarding`
+- After sign-in → `/dashboard`
+- If user has no `targetRole` (not onboarded) → redirect to `/onboarding`
+
+# ============================================================
+# 8. TANSTACK QUERY RULES
+# ============================================================
+
+## Provider Setup (components/providers.tsx)
+```typescript
+"use client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { useState } from "react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { staleTime: 60 * 1000 } } })
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+```
+
+Wrap `app/layout.tsx` children in `<Providers>` (it's a client component, so layout stays server).
+
+## Query Key Conventions
+```typescript
+['sessions', { role, type, page }]   // all filter deps in key
+['session', sessionId]
+['dashboard', userId]
+['feedback', sessionId]
+```
+
+## staleTime Guidelines
+- Dashboard stats: `staleTime: 1000 * 60 * 5` (5 minutes)
+- Session list: `staleTime: 1000 * 60 * 2` (2 minutes)
+- Single session / feedback: `staleTime: Infinity` (immutable once completed)
+
+## Pagination
+- Use `useInfiniteQuery` for session history — pageSize: 10
+- API: `GET /api/sessions?page=1&role=&type=&limit=10`
+- Provide `getNextPageParam` from API response meta
+
+## Optimistic Updates
+Use `useMutation` with `onMutate` / `onError` / `onSettled` for session creation.
+Immediately add a pending session, replace with real data on success.
+
+# ============================================================
+# 9. SHADCN/UI RULES
+# ============================================================
+
+- Import ONLY from `@/components/ui/...` — never re-create built-ins.
+- Use `cn()` from `@/lib/utils` for conditional class merging.
+- Required components: card, badge, progress, accordion, dialog, tabs,
+  avatar, skeleton, button, input, label, select, separator, toast,
+  alert-dialog, sheet
+
+## Loading States
+Always use `<Skeleton />` while `isLoading` or `isPending` is true.
+Match skeleton shape to the real content layout.
+
+## Destructive Actions
+Always wrap delete operations in `<AlertDialog>` with a confirmation step.
+
+## Toasts
+Use `useToast()` for all mutation success/error feedback.
+Keep messages concise: "Session saved", "Error generating feedback — try again".
+
+## Score Color Helpers
+```typescript
+export function getScoreColor(score: number) {
+  if (score >= 70) return "text-green-500";
+  if (score >= 50) return "text-yellow-500";
+  return "text-red-500";
+}
+
+export function getScoreBadgeVariant(score: number): "default" | "secondary" | "destructive" {
+  if (score >= 70) return "default";
+  if (score >= 50) return "secondary";
+  return "destructive";
+}
+
+export function getGradeColor(grade: string) {
+  if (["A+", "A"].includes(grade)) return "text-green-500";
+  if (["B+", "B"].includes(grade)) return "text-blue-500";
+  if (["C+", "C"].includes(grade)) return "text-yellow-500";
+  return "text-red-500";
+}
+```
+
+# ============================================================
+# 10. VOICE SESSION — PHASE 5 (CRITICAL — CURSOR ONLY)
+# ============================================================
+
+NEVER use Bolt.new or v0.dev for the voice session page.
+This phase involves WebSockets, real-time state, Vapi SDK, and live transcription.
+
+## useVoiceAgent Hook Types
+```typescript
+import Vapi from "@vapi-ai/web";
+
+interface TranscriptEntry {
+  speaker: "ai" | "user";
+  text: string;
+  timestamp: Date;
+}
+
+interface UseVoiceAgentOptions {
+  sessionId: string;
+  questions: Question[];
+  onTranscriptUpdate: (entry: TranscriptEntry) => void;
+  onSessionEnd: () => void;
+}
+
+// Returned state:
+// isConnected: boolean
+// isSpeaking: boolean         — AI is speaking
+// isUserSpeaking: boolean     — user mic is active
+// transcript: TranscriptEntry[]
+// currentQuestionIndex: number
+// callStatus: "idle" | "connecting" | "active" | "ended"
+// startSession: () => Promise<void>
+// stopSession: () => void
+```
+
+## Token Security
+`GET /api/voice/token` → server generates ephemeral Vapi token → returns to client.
+NEVER put VAPI_API_KEY in client code. NEVER put it in NEXT_PUBLIC_ env vars.
+
+## Vapi Assistant Config
+```typescript
+const assistantConfig = {
+  name: "Alex",
+  firstMessage: `Hello! I'm Alex, your AI interviewer. Let's begin: ${questions[0].text}`,
+  model: {
+    provider: "openai",
+    model: "gpt-4o",
+    systemPrompt: VOICE_AGENT_SYSTEM_PROMPT,
+  },
+  voice: {
+    provider: "11labs",
+    voiceId: "rachel",
+  },
+};
+```
+
+## Vapi Events to Listen For
+- `speech-start` → set isSpeaking = true
+- `speech-end` → set isSpeaking = false
+- `message` → append to transcript
+- `call-end` → call onSessionEnd()
+- `error` → surface error in UI state
+
+## Session Page Layout
+```
+┌────────────────────────────────────────────────────────────┐
+│  [Timer: 28:43]  Question 2 of 6  [Status Badge]  [End ✕]  │
+├─────────────────────────┬──────────────────────────────────┤
+│   Current Question      │   Live Transcript                 │
+│   (40% width)           │   (60% width)                     │
+│                         │                                   │
+│   [Question text card]  │   [Chat-style scroll — auto]      │
+│                         │   AI: left-aligned                │
+│   Upcoming (blurred)    │   User: right-aligned             │
+│                         │                                   │
+│   [Progress bar]        │   [Speaking indicator + status]   │
+└─────────────────────────┴──────────────────────────────────┘
+```
+
+## Keyboard Shortcuts
+- `Space` → toggle microphone
+- `Esc` → open "End Session?" AlertDialog
+
+## Session Timer
+- Countdown from session duration (seconds)
+- Auto-end at 0
+- Show red color when < 2 minutes remaining
+
+## On Session End
+1. Call `POST /api/session/complete` with sessionId + transcript
+2. Show overlay: "Great work! Generating your feedback..."
+3. Redirect to `/interview/[id]/feedback`
+
+# ============================================================
+# 11. FEEDBACK ENGINE RULES
+# ============================================================
+
+## Weighted Score Formula
+```typescript
+const overallScore =
+  scores.contentAccuracy * 0.40 +
+  scores.communication   * 0.25 +
+  scores.problemSolving  * 0.20 +
+  scores.confidence      * 0.15;
+```
+
+## Grade Mapping
+```typescript
+function calculateGrade(score: number): string {
+  if (score >= 95) return "A+";
+  if (score >= 90) return "A";
+  if (score >= 85) return "B+";
+  if (score >= 80) return "B";
+  if (score >= 75) return "C+";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "F";
+}
+```
+
+## Session Complete API Flow
+```
+POST /api/session/complete
+  1. Auth check via Clerk
+  2. Verify session belongs to current user
+  3. Fetch all Questions + Answers for this session
+  4. For each Q&A: call GPT-4o with Answer Evaluation Prompt
+  5. Parse JSON, update Answer in Prisma (score + feedback)
+  6. Calculate weighted overallScore across all answers
+  7. Update Session: status="completed", overallScore, grade, completedAt=now()
+  8. Return full feedback report
+```
+
+## GPT Feedback Response Shape
+```typescript
+interface AnswerFeedback {
+  scores: {
+    contentAccuracy: number;  // 0-100 · weight 40%
+    communication: number;    // 0-100 · weight 25%
+    problemSolving: number;   // 0-100 · weight 20%
+    confidence: number;       // 0-100 · weight 15%
+  };
+  overallScore: number;
+  grade: string;              // A+ | A | B+ | B | C+ | C | D | F
+  strengths: string[];        // 3 items
+  improvements: string[];     // 3 items
+  idealAnswerSummary: string;
+  fillerWords: { count: number; examples: string[] };
+  tip: string;                // One actionable tip
+}
+```
+
+## Share Functionality
+- Every session has `shareToken` (auto-generated cuid).
+- `/report/[shareToken]` is public — no auth required.
+- Only return data if `session.isPublic === true`.
+- Toggle via PATCH `/api/sessions/[id]` → `{ isPublic: boolean }`.
+
+# ============================================================
+# 12. AI PROMPTS — EXACT TEXT, DO NOT MODIFY
+# ============================================================
+
+## 12.1 Question Generation System Prompt
+```
+You are an expert technical interviewer at a top-tier tech company.
+Generate exactly {count} interview questions for a {difficulty} difficulty {role} interview.
+Interview Type: {interviewType}
+
+Rules:
+- Questions must be realistic and representative of actual interviews at FAANG/top-tier companies
+- For "technical" type: focus on core skills, algorithms, system design, debugging scenarios
+- For "behavioral" type: use STAR-format prompts (Situation, Task, Action, Result)
+- For "mixed": alternate between technical and behavioral
+- Vary difficulty even within the set
+- Include at least one follow-up setup question per main question
+- Return ONLY a JSON array, no additional text, no markdown fences
+
+JSON format:
+[{
+  "id": "q1",
+  "text": "...",
+  "type": "technical|behavioral",
+  "category": "...",
+  "difficulty": "easy|medium|hard",
+  "idealAnswer": "...",
+  "followUps": ["..."]
+}]
+```
+
+Count formula: `count = Math.floor(duration / 5)` → 30 min = 6 questions
+
+## 12.2 Answer Evaluation System Prompt
+```
+You are a senior engineering interview coach.
+Evaluate the following interview answer and return a structured JSON feedback object.
+
+Question: {question}
+Ideal Answer: {idealAnswer}
+Candidate Answer (transcribed): {transcript}
+Role: {role} | Difficulty: {difficulty}
+
+Evaluate on these dimensions (0-100):
+1. contentAccuracy: Is the answer technically correct and complete?
+2. communication: Is it clear, structured, and concise?
+3. problemSolving: Did they show logical thinking and discuss trade-offs?
+4. confidence: Based on transcript markers (filler words, hesitation, direct language)
+
+Return ONLY valid JSON, no markdown fences:
+{
+  "scores": {
+    "contentAccuracy": 0-100,
+    "communication": 0-100,
+    "problemSolving": 0-100,
+    "confidence": 0-100
+  },
+  "overallScore": 0-100,
+  "grade": "A+|A|B+|B|C+|C|D|F",
+  "strengths": ["...", "...", "..."],
+  "improvements": ["...", "...", "..."],
+  "idealAnswerSummary": "...",
+  "fillerWords": { "count": 0, "examples": ["..."] },
+  "tip": "One specific, actionable tip for next time"
+}
+```
+
+## 12.3 Voice Agent System Prompt (saraha)
+```
+You are saraha, a professional AI interviewer at MockAI. You conduct realistic mock interviews
+to help candidates prepare for job interviews at top companies.
+
+Personality: Warm but professional. Encouraging but honest. Ask follow-up questions if an
+answer is vague or incomplete.
+
+Rules:
+- Introduce yourself and the interview format at the start
+- Ask one question at a time. Wait for the full answer before proceeding.
+- If the candidate pauses for more than 5 seconds, gently prompt: "Take your time, no rush."
+- If an answer is too short, ask: "Could you expand on that? Maybe walk me through an example?"
+- After all questions, say: "Thank you, that wraps up our session today. I'll prepare your
+  detailed feedback report now."
+- Never reveal the ideal answer during the session
+- Maintain consistent pacing: don't rush the candidate
+- If the candidate says "skip" or "next question", politely move on
+- Keep responses to 1-3 sentences max. You are the interviewer, not a lecturer.
+```
+
+# ============================================================
+# 13. DASHBOARD DATA API
+# ============================================================
+
+`GET /api/dashboard/stats` must return:
+```typescript
+interface DashboardStats {
+  totalSessions: number;
+  avgScore: number;
+  currentStreak: number;            // consecutive days with >= 1 session
+  improvementRate: number;          // ((last5avg - first5avg) / first5avg) * 100
+  scoreTrend: {
+    date: string;
+    avgScore: number;
+  }[];                              // last 30 days
+  roleBreakdown: {
+    role: string;
+    count: number;
+    avgScore: number;
+  }[];
+  dimensionAverages: {
+    contentAccuracy: number;
+    communication: number;
+    problemSolving: number;
+    confidence: number;
+  };
+  recentSessions: {
+    id: string;
+    role: string;
+    interviewType: string;
+    overallScore: number | null;
+    grade: string | null;
+    createdAt: string;
+    duration: number;
+  }[];                              // last 5
+}
+```
+
+Hook: `useDashboard` with `staleTime: 1000 * 60 * 5`.
+
+# ============================================================
+# 14. ALL APPLICATION ROUTES
+# ============================================================
+
+| Route                        | Type      | Description                              |
+|------------------------------|-----------|------------------------------------------|
+| /                            | Public    | Marketing landing page                   |
+| /sign-in                     | Public    | Clerk sign-in with OAuth                 |
+| /sign-up                     | Public    | Clerk sign-up → onboarding redirect      |
+| /onboarding                  | Protected | Role + experience + prefs wizard         |
+| /dashboard                   | Protected | Analytics dashboard                      |
+| /interview/new               | Protected | Setup: role, type, difficulty            |
+| /interview/[id]              | Protected | Live voice session                       |
+| /interview/[id]/feedback     | Protected | Full feedback report                     |
+| /sessions                    | Protected | Paginated history + filters              |
+| /sessions/[id]               | Protected | Single session detail                    |
+| /profile                     | Protected | User settings + preferences              |
+| /pricing                     | Public    | Pricing tiers                            |
+| /report/[shareToken]         | Public    | Shareable report (no login needed)       |
+| /api/webhook/clerk           | API       | Clerk webhook — must be PUBLIC           |
+| /api/session/create          | API       | Create session + generate questions      |
+| /api/session/complete        | API       | Mark complete + run GPT-4o feedback      |
+| /api/feedback/[id]           | API       | Get feedback report                      |
+| /api/voice/token             | API       | Generate ephemeral Vapi token            |
+| /api/sessions                | API       | Paginated session list                   |
+| /api/dashboard/stats         | API       | Aggregated stats                         |
+
+# ============================================================
+# 15. SUPPORTED ROLES (exact DB strings)
+# ============================================================
+
+- "Frontend Developer"   — React, Next.js, CSS, Performance, Accessibility
+- "Backend Developer"    — Node.js, APIs, Databases, System Design
+- "Full Stack Developer" — Combined frontend + backend
+- "Product Manager"      — Strategy, Metrics, Prioritization, Execution
+- "Data Scientist"       — Statistics, ML, SQL, Python, Experimentation
+- "UX/UI Designer"       — Process, Critique, Tools, Research
+- "DevOps Engineer"      — CI/CD, Kubernetes, AWS/GCP
+
+# ============================================================
+# 16. QUICK SETUP COMMANDS
+# ============================================================
+
+```bash
+# 1. Create project
+npx create-next-app@latest ai-interview-coach --typescript --tailwind --app --src-dir
+
+# 2. Install dependencies
+npm install @clerk/nextjs @prisma/client prisma
+npm install @tanstack/react-query @tanstack/react-query-devtools
+npm install openai @vapi-ai/web
+npm install recharts svix
+npm install uploadthing @uploadthing/react resend
+
+# 3. Install Shadcn
+npx shadcn@latest init
+npx shadcn@latest add card badge progress accordion dialog tabs avatar skeleton button input label select separator toast alert-dialog sheet
+
+# 4. Initialize Prisma
+npx prisma init --datasource-provider postgresql
+# Paste schema from Section 4, then:
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+# ============================================================
+# 17. BUILD PHASE TOOL ROUTING
+# ============================================================
+
+| Phase | What                 | Tool             | Why                               |
+|-------|----------------------|------------------|-----------------------------------|
+| 1     | Prisma schema + DB   | Cursor           | Multi-file, complex schema        |
+| 2     | Clerk auth + webhook | Cursor           | Needs exact middleware logic      |
+| 3     | Onboarding UI        | v0.dev           | Pure UI wizard, no complex logic  |
+| 4     | Interview setup page | Bolt.new         | Form UI scaffolding fast          |
+| 5     | Voice session page   | Cursor ONLY      | WebSocket + Vapi SDK complexity   |
+| 6     | Feedback engine      | Cursor           | GPT-4o API + complex JSON parsing |
+| 7     | Dashboard + charts   | v0.dev → Cursor  | UI in v0, data hooks in Cursor    |
+| 8     | Session history      | Bolt.new         | Paginated table with filters      |
+| 9     | Landing page         | v0.dev           | Pure marketing UI                 |
+
+Golden Rule: Use Cursor for anything touching DB, auth, API routes, or Vapi.
+Use v0.dev/Bolt.new ONLY for pure UI pages with no complex logic.
+
+# ============================================================
+# 18. MVP SCOPE — BUILD NOW
+# ============================================================
+
+✅ Clerk auth + onboarding
+✅ Voice interview session (Vapi/ElevenLabs)
+✅ GPT-4o question generation
+✅ AI feedback report (4 dimensions)
+✅ Session history + transcript view
+✅ Basic dashboard (score, sessions count)
+✅ 7 roles supported
+✅ Shareable session report link
+✅ Vercel deployment
+
+🚫 NOT in MVP: Stripe, email digest, goal tracking, team support,
+   custom questions, mobile PWA, video recording, admin panel.
+
+# ============================================================
+# 19. COMMON PITFALLS — NEVER DO THESE
+# ============================================================
+
+- Never instantiate PrismaClient outside lib/prisma.ts (causes "too many connections")
+- Never put VAPI_API_KEY in any NEXT_PUBLIC_ env var or client-side code
+- Never skip svix signature verification in the Clerk webhook route
+- Never apply auth middleware to /api/webhook/clerk (it must be public)
+- Never forget cascade deletes — test that deleting a User removes all their Sessions
+- Never use `useRouter.push()` for post-login redirects — use Clerk's AFTER_SIGN_IN_URL env vars
+- Never add `"use client"` to API routes or to root layout.tsx
+- Never render an empty table — always show an empty state UI when sessions.length === 0
+- Never assume overallScore is non-null — sessions can be abandoned (status="abandoned")
+- Never hardcode role strings — use the exact strings from Section 15
+- Always handle OpenAI JSON parse errors — wrap JSON.parse() in try/catch with fallback
+- Always test the Clerk webhook with ngrok locally before deploying to Vercel
