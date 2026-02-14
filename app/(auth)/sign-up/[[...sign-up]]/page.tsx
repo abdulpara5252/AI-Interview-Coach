@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
 export default function SignUpPage() {
-  redirect("/?auth=signup");
+  // All auth flows go through Sign In — Clerk auto-creates accounts for new users
+  redirect("/sign-in");
 }

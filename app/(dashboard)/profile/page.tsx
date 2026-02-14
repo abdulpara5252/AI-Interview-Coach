@@ -13,7 +13,7 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
-          <CardDescription>Your HirinAi profile</CardDescription>
+          <CardDescription>Your HerinAI profile</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <Avatar className="h-16 w-16">

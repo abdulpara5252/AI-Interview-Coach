@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -12,7 +12,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,13 +33,15 @@ async function fetchSession(sessionId: string) {
   }>;
 }
 
-async function completeSession(sessionId: string, transcript: TranscriptEntry[]) {
+async function completeSession(sessionId: string, transcript: TranscriptEntry[], audioUrl?: string, conversationId?: string) {
   const res = await fetch("/api/session/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       sessionId,
       transcript: transcript.map((e) => ({ speaker: e.speaker, text: e.text })),
+      audioUrl,
+      conversationId,
     }),
   });
   if (!res.ok) {
@@ -55,6 +56,8 @@ export default function InterviewSessionPage() {
   const sessionId = params.id as string;
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [completing, setCompleting] = useState(false);
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const completedRef = useRef(false);
 
   const { data: session, isLoading } = useQuery({
@@ -63,120 +66,188 @@ export default function InterviewSessionPage() {
     enabled: !!sessionId,
   });
 
-  const onSessionEnd = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setCompleting(true);
-    completeSession(sessionId, transcript)
-      .then(() => router.push(`/interview/${sessionId}/feedback`))
-      .catch(() => {
-        completedRef.current = false;
-        setCompleting(false);
-      });
-  }, [sessionId, transcript, router]);
-
+  // Create a ref to hold the voice agent instance
+  const voiceRef = useRef<ReturnType<typeof useVoiceAgent> | null>(null);
+  
   const voice = useVoiceAgent({
     sessionId,
     questions: session?.questions ?? [],
     onTranscriptUpdate: (entry) => setTranscript((t) => [...t, entry]),
-    onSessionEnd,
+    onSessionEnd: (audioUrl?: string) => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      setCompleting(true);
+      setEndDialogOpen(false);
+      
+      // Get conversation ID from voice agent
+      const conversationId = voiceRef.current?.getConversationId();
+      
+      completeSession(sessionId, transcript, audioUrl, conversationId || undefined)
+        .then(() => router.push(`/interview/${sessionId}/feedback`))
+        .catch(() => {
+          completedRef.current = false;
+          setCompleting(false);
+        });
+    },
   });
+  
+  // Update the ref whenever voice changes
+  useEffect(() => {
+    voiceRef.current = voice;
+  }, [voice]);
+
+  // Keyboard: Esc → End Session dialog, Space → toggle mic (UI state; actual mute depends on voice API)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (voice.callStatus === "active" || voice.callStatus === "connecting") {
+          setEndDialogOpen(true);
+        }
+      }
+      const target = e.target as HTMLElement;
+      const isInput = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
+      if (e.key === " " && !isInput) {
+        e.preventDefault();
+        setMicMuted((m) => !m);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [voice.callStatus]);
 
   if (isLoading || !session) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-32" />
-        <div className="grid gap-6 md:grid-cols-[1fr_1.5fr]">
-          <Skeleton className="h-48" />
-          <Skeleton className="h-96" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-4xl space-y-6">
+          <Skeleton className="h-10 w-48 bg-violet-200" />
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6">
+            <Skeleton className="h-80 bg-violet-200 rounded-2xl" />
+            <Skeleton className="h-80 bg-violet-200 rounded-2xl" />
+          </div>
         </div>
       </div>
     );
   }
 
-  const currentQuestion = session.questions[voice.currentQuestionIndex] ?? session.questions[0];
-  const nextQuestion = session.questions[voice.currentQuestionIndex + 1];
+  const currentQuestion =
+    session.questions[voice.currentQuestionIndex] ?? session.questions[0];
+  const upcomingQuestions = session.questions
+    .slice(voice.currentQuestionIndex + 1)
+    .map((q) => ({ text: q.text }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <SessionTimer
-            durationSeconds={session.duration * 60}
-            isActive={voice.callStatus === "active"}
-            onExpire={voice.stopSession}
-          />
-          <span className="text-muted-foreground text-sm">
-            Question {voice.currentQuestionIndex + 1} of {session.questions.length}
-          </span>
-          <Badge variant={voice.callStatus === "active" ? "default" : "secondary"}>
-            {voice.callStatus}
-          </Badge>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm">
-              End session
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>End interview?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Your transcript will be saved and we’ll generate your feedback report.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={voice.stopSession}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                End & get feedback
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-      {(voice.callStatus === "idle" || voice.callStatus === "connecting") && (
-        <div className="rounded-lg border bg-card p-6 text-center">
-          <p className="mb-4">Ready when you are. Click below to start the voice interview.</p>
-          <Button
-            onClick={voice.startSession}
-            disabled={voice.callStatus === "connecting"}
-          >
-            {voice.callStatus === "connecting" ? "Connecting…" : "Start interview"}
-          </Button>
-          {voice.error && (
-            <p className="mt-4 text-sm text-destructive">{voice.error}</p>
-          )}
-        </div>
-      )}
-
-      {(voice.callStatus === "active" || voice.callStatus === "ended") && (
-        <div className="grid gap-6 md:grid-cols-[1fr_1.5fr]">
-          <QuestionCard
-            currentQuestion={currentQuestion ?? { text: "", order: 0 }}
-            totalQuestions={session.questions.length}
-            upcomingPreview={nextQuestion?.text}
-          />
-          <div>
-            <h3 className="mb-2 text-sm font-medium">Live transcript</h3>
-            <TranscriptPanel
-              entries={voice.transcript}
-              isSpeaking={voice.isSpeaking}
-              isUserSpeaking={voice.isUserSpeaking}
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 text-gray-900 flex flex-col">
+      {/* Top bar */}
+      <header className="flex-shrink-0 border-b border-violet-100 bg-white/80 backdrop-blur-sm px-6 py-4 shadow-purple-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <SessionTimer
+              durationSeconds={session.duration * 60}
+              isActive={voice.callStatus === "active"}
+              onExpire={voice.stopSession}
             />
+            <span className="text-violet-700 text-sm font-medium">
+              Question {voice.currentQuestionIndex + 1} of {session.questions.length}
+            </span>
+            <Badge
+              variant={voice.callStatus === "active" ? "default" : "secondary"}
+              className={
+                voice.callStatus === "active"
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0 shadow-purple"
+                  : "bg-violet-100 text-violet-700 border-violet-200"
+              }
+            >
+              {voice.callStatus}
+            </Badge>
+            {micMuted && (
+              <span className="text-xs text-amber-600 font-medium">Mic muted (Space to toggle)</span>
+            )}
           </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setEndDialogOpen(true)}
+            className="bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-lg rounded-xl"
+          >
+            End Session
+          </Button>
         </div>
-      )}
+      </header>
 
+      {/* Main: start CTA or two panels */}
+      <main className="flex-1 flex flex-col min-h-0 p-6">
+        {(voice.callStatus === "idle" || voice.callStatus === "connecting") && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="rounded-2xl border border-violet-100 bg-white/80 backdrop-blur-sm p-8 text-center max-w-md shadow-purple-xl">
+              <p className="text-violet-700 mb-6 font-medium">
+                Ready when you are. Click below to start the voice interview.
+              </p>
+              <Button
+                onClick={voice.startSession}
+                disabled={voice.callStatus === "connecting"}
+                className="gradient-purple-pink text-white shadow-purple hover:shadow-purple-lg hover:opacity-90 rounded-xl px-6 transition-all"
+              >
+                {voice.callStatus === "connecting" ? "Connecting…" : "Start interview"}
+              </Button>
+              {voice.error && (
+                <p className="mt-4 text-sm text-red-500">{voice.error}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(voice.callStatus === "active" || voice.callStatus === "ended") && (
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 min-h-0">
+            <div className="min-h-0 flex flex-col">
+              <QuestionCard
+                currentQuestion={currentQuestion ?? { text: "", order: 0 }}
+                totalQuestions={session.questions.length}
+                upcomingQuestions={upcomingQuestions}
+              />
+            </div>
+            <div className="min-h-0 flex flex-col">
+              <TranscriptPanel
+                entries={voice.transcript}
+                isSpeaking={voice.isSpeaking}
+                isUserSpeaking={voice.isUserSpeaking}
+                isConnecting={false}
+                callStatus={voice.callStatus}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* End Session confirmation — Esc opens this */}
+      <AlertDialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+        <AlertDialogContent className="bg-white border-violet-100 text-gray-900 rounded-2xl shadow-purple-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Session?</AlertDialogTitle>
+            <AlertDialogDescription className="text-violet-600">
+              Your transcript will be saved and we&apos;ll generate your feedback report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100 rounded-xl">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={voice.stopSession}
+              className="bg-gradient-to-r from-rose-500 to-red-500 text-white hover:from-rose-600 hover:to-red-600 rounded-xl"
+            >
+              End & get feedback
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Completion overlay */}
       {completing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
-          <div className="rounded-lg border bg-card p-8 text-center">
-            <p className="font-medium">Generating your feedback…</p>
-            <p className="text-muted-foreground text-sm mt-1">You’ll be redirected in a moment.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-violet-900/90 to-purple-900/90">
+          <div className="rounded-2xl border border-violet-200/30 bg-white/10 backdrop-blur-sm p-8 text-center shadow-purple-xl">
+            <p className="font-medium text-white text-lg">Great work! Generating your feedback…</p>
+            <p className="text-violet-200 text-sm mt-1">You&apos;ll be redirected in a moment.</p>
           </div>
         </div>
       )}

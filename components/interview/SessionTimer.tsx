@@ -39,8 +39,8 @@ export function SessionTimer({
   return (
     <div
       className={cn(
-        "font-mono text-lg tabular-nums",
-        isLow && "text-red-600",
+        "font-mono text-lg tabular-nums text-gray-900 font-semibold",
+        isLow && "text-red-500",
         className
       )}
     >

@@ -25,8 +25,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const isPublic = typeof body.isPublic === "boolean" ? body.isPublic : undefined;
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const isPublic = typeof body?.isPublic === "boolean" ? body.isPublic : undefined;
     if (isPublic === undefined) {
       return NextResponse.json({ error: "isPublic required" }, { status: 400 });
     }

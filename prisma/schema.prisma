@@ -7,18 +7,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  targetRole String?
-  experience String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  sessions  Session[]
-  preferences UserPreference?
-  goals     Goal[]
+  id           String    @id @default(cuid())
+  clerkId      String    @unique
+  email        String    @unique
+  name         String?
+  avatarUrl    String?
+  targetRole   String?
+  experience   String?
+  onboardedAt  DateTime? // set when onboarding completes (targetRole + experience + preference saved)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+  preferences  UserPreference?
+  goals        Goal[]
 }
 
 model UserPreference {
@@ -46,6 +47,7 @@ model Session {
   transcript    Json?
   feedback      Json?
   audioUrl      String?
+  conversationId String?
   shareToken    String?   @unique @default(cuid())
   isPublic      Boolean   @default(false)
   createdAt     DateTime  @default(now())
