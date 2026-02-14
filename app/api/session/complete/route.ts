@@ -94,6 +94,7 @@ export async function POST(req: Request) {
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
     const transcriptItems = Array.isArray(body.transcript) ? body.transcript : [];
     const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl : null;
+    const conversationId = typeof body.conversationId === "string" ? body.conversationId : null;
 
     if (!sessionId) {
       return NextResponse.json({ error: "sessionId required" }, { status: 400 });
@@ -194,6 +195,7 @@ export async function POST(req: Request) {
         completedAt: new Date(),
         transcript: transcriptItems,
         audioUrl,
+        conversationId,
         feedback: { overallScore, grade },
       },
     });

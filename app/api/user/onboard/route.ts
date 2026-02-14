@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     }
 
     // Success = User (targetRole, experience, onboardedAt) + UserPreference row
-    await prisma.$transaction([
+    const result = await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
         data: {
@@ -74,6 +74,19 @@ export async function POST(req: Request) {
         },
       }),
     ]);
+    
+    // Verify the user is now marked as onboarded
+    const updatedUser = await prisma.user.findUnique({ 
+      where: { id: user.id },
+      select: { onboardedAt: true, targetRole: true, experience: true }
+    });
+    
+    console.log("[ONBOARDING_COMPLETED]", {
+      userId: user.id,
+      onboardedAt: updatedUser?.onboardedAt,
+      targetRole: updatedUser?.targetRole,
+      experience: updatedUser?.experience
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

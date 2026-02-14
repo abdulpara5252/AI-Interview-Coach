@@ -33,7 +33,7 @@ async function fetchSession(sessionId: string) {
   }>;
 }
 
-async function completeSession(sessionId: string, transcript: TranscriptEntry[], audioUrl?: string) {
+async function completeSession(sessionId: string, transcript: TranscriptEntry[], audioUrl?: string, conversationId?: string) {
   const res = await fetch("/api/session/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -41,6 +41,7 @@ async function completeSession(sessionId: string, transcript: TranscriptEntry[],
       sessionId,
       transcript: transcript.map((e) => ({ speaker: e.speaker, text: e.text })),
       audioUrl,
+      conversationId,
     }),
   });
   if (!res.ok) {
@@ -65,25 +66,35 @@ export default function InterviewSessionPage() {
     enabled: !!sessionId,
   });
 
-  const onSessionEnd = useCallback((audioUrl?: string) => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setCompleting(true);
-    setEndDialogOpen(false);
-    completeSession(sessionId, transcript, audioUrl)
-      .then(() => router.push(`/interview/${sessionId}/feedback`))
-      .catch(() => {
-        completedRef.current = false;
-        setCompleting(false);
-      });
-  }, [sessionId, transcript, router]);
-
+  // Create a ref to hold the voice agent instance
+  const voiceRef = useRef<ReturnType<typeof useVoiceAgent> | null>(null);
+  
   const voice = useVoiceAgent({
     sessionId,
     questions: session?.questions ?? [],
     onTranscriptUpdate: (entry) => setTranscript((t) => [...t, entry]),
-    onSessionEnd,
+    onSessionEnd: (audioUrl?: string) => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      setCompleting(true);
+      setEndDialogOpen(false);
+      
+      // Get conversation ID from voice agent
+      const conversationId = voiceRef.current?.getConversationId();
+      
+      completeSession(sessionId, transcript, audioUrl, conversationId || undefined)
+        .then(() => router.push(`/interview/${sessionId}/feedback`))
+        .catch(() => {
+          completedRef.current = false;
+          setCompleting(false);
+        });
+    },
   });
+  
+  // Update the ref whenever voice changes
+  useEffect(() => {
+    voiceRef.current = voice;
+  }, [voice]);
 
   // Keyboard: Esc → End Session dialog, Space → toggle mic (UI state; actual mute depends on voice API)
   useEffect(() => {

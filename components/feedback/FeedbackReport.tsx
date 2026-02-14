@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,7 +10,7 @@ import { QuestionFeedback } from "./QuestionFeedback";
 import { TranscriptDisplay } from "./TranscriptDisplay";
 import { AudioPlayer } from "./AudioPlayer";
 import { SessionSummary } from "./SessionSummary";
-import { CheckCircle2, TrendingUp, Copy, Share2, Lock, Globe } from "lucide-react";
+import { CheckCircle2, TrendingUp, Copy, Share2, Lock, Globe, Loader2 } from "lucide-react";
 
 interface SessionFeedback {
   id: string;
@@ -42,6 +42,7 @@ interface SessionFeedback {
   }[];
   transcript?: { speaker: "ai" | "user"; text: string; timestamp: string }[] | null;
   audioUrl?: string | null;
+  conversationId?: string | null;
   shareToken: string | null;
   isPublic: boolean;
   user?: { name: string | null }; // Made optional to prevent undefined errors
@@ -81,6 +82,100 @@ function getGradeGradient(grade: string) {
     F: "from-rose-600 to-red-400",
   };
   return gradeMap[grade] || "from-gray-600 to-gray-400";
+}
+
+interface AudioSectionProps {
+  session: SessionFeedback;
+}
+
+function AudioSection({ session }: AudioSectionProps) {
+  const [realAudioUrl, setRealAudioUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch real ElevenLabs audio if conversationId exists
+  useEffect(() => {
+    const fetchRealAudio = async () => {
+      if (session.conversationId) {
+        setIsLoading(true);
+        setError(null);
+        try {
+          console.log("[Feedback] Fetching ElevenLabs audio for conversation:", session.conversationId);
+          const response = await fetch(`/api/voice/audio/${session.conversationId}`);
+          
+          if (response.ok) {
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            setRealAudioUrl(audioUrl);
+            console.log("[Feedback] ElevenLabs audio loaded successfully");
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.warn("[Feedback] Failed to fetch ElevenLabs audio:", response.status, errorData);
+            setError("Failed to load interview recording");
+          }
+        } catch (err) {
+          console.error("[Feedback] Error fetching ElevenLabs audio:", err);
+          setError("Error loading interview recording");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void fetchRealAudio();
+
+    // Cleanup object URL on unmount
+    return () => {
+      if (realAudioUrl) {
+        URL.revokeObjectURL(realAudioUrl);
+      }
+    };
+  }, [session.conversationId]);
+
+  // Determine which audio to display
+  const displayAudioUrl = realAudioUrl || session.audioUrl || "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav";
+  const isRealRecording = !!realAudioUrl || (!!session.conversationId && !error);
+  
+  // Only show audio player if we have audio or are loading
+  if (!displayAudioUrl && !isLoading) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      {isLoading && (
+        <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl">
+          <CardContent className="pt-6 flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
+            <span className="text-violet-700">Loading interview recording...</span>
+          </CardContent>
+        </Card>
+      )}
+      
+      {error && (
+        <Card className="border-amber-100/50 bg-amber-50 shadow-purple-sm rounded-2xl">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 text-amber-700">
+              <Globe className="w-5 h-5" />
+              <span>{error}. Showing demo audio instead.</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      <AudioPlayer 
+        audioUrl={displayAudioUrl} 
+        duration={session.duration * 60}
+        className={isRealRecording ? "" : "opacity-75"}
+      />
+      
+      {!isRealRecording && !isLoading && (
+        <div className="text-center text-sm text-violet-500 italic">
+          This is a demo recording. Complete a real interview to record your actual session.
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
@@ -194,12 +289,7 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
       )}
 
       {/* Audio Player - NEW */}
-      {(session.audioUrl || process.env.NODE_ENV === 'development') && (
-        <AudioPlayer 
-          audioUrl={session.audioUrl || "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav"} 
-          duration={session.duration * 60} 
-        />
-      )}
+      <AudioSection session={session} />
 
       {/* Overall Score Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -41,6 +41,9 @@ export function useVoiceAgent({
   const conversationRef = useRef<Awaited<ReturnType<typeof Conversation.startSession>> | null>(null);
   const conversationIdRef = useRef<string | null>(null);
 
+  // Expose conversationId getter
+  const getConversationId = useCallback(() => conversationIdRef.current, []);
+
   const startSession = useCallback(async () => {
     setError(null);
     setCallStatus("connecting");
@@ -208,5 +211,6 @@ export function useVoiceAgent({
     error,
     startSession,
     stopSession,
+    getConversationId,
   };
 }

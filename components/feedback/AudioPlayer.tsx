@@ -1,10 +1,7 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Square, Volume2, Clock } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 interface AudioPlayerProps {
@@ -17,6 +14,8 @@ export function AudioPlayer({ audioUrl, duration, className }: AudioPlayerProps)
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const togglePlayback = () => {
@@ -36,6 +35,17 @@ export function AudioPlayer({ audioUrl, duration, className }: AudioPlayerProps)
       audioRef.current.currentTime = 0;
     }
     setIsPlaying(false);
+  };
+
+  const togglePlaybackRate = () => {
+    const rates = [1.0, 1.25, 1.5, 1.75, 2.0];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextIndex = (currentIndex + 1) % rates.length;
+    const newRate = rates[nextIndex];
+    setPlaybackRate(newRate);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newRate;
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -60,11 +70,13 @@ export function AudioPlayer({ audioUrl, duration, className }: AudioPlayerProps)
 
   const handleLoadedMetadata = () => {
     setIsLoading(false);
+    setError(null);
   };
 
   const handleError = () => {
     setIsLoading(false);
-    console.error("Failed to load audio");
+    setError("Failed to load audio");
+    console.error("Failed to load audio from:", audioUrl);
   };
 
   useEffect(() => {
@@ -89,88 +101,101 @@ export function AudioPlayer({ audioUrl, duration, className }: AudioPlayerProps)
   const totalTime = audioRef.current?.duration || duration || 0;
 
   return (
-    <Card className={cn("border-violet-100/50 shadow-purple-sm rounded-2xl", className)}>
-      <CardHeader>
-        <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
-          <Volume2 className="w-5 h-5 text-violet-600" />
-          {audioUrl.includes('soundjay') ? 'Demo Audio' : 'Session Recording'}
-          {audioUrl.includes('soundjay') && (
-            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
-              TEST MODE
-            </span>
-          )}
-        </CardTitle>
-        <p className="text-sm text-violet-700/60">
-          {audioUrl.includes('soundjay') 
-            ? 'This is a demo audio file. Complete a real interview to record your actual session.'
-            : 'Listen to your complete interview session'
-          }
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className={cn("bg-[#F5F3FF] border border-violet-100 rounded-xl shadow-sm", className)}>
+      <CardContent className="p-4 bg-white rounded-lg space-y-4">
+        {/* Top row: Time indicator and menu */}
+        <div className="flex justify-between items-center">
+          <div className="bg-violet-500 rounded-full px-3 py-1">
+            <span className="text-white text-sm font-mono">{formatTime(currentTime)}</span>
+          </div>
+          <button className="p-1 rounded hover:bg-gray-100">
+            <div className="flex flex-col space-y-1">
+              {/* <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+              <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+              <div className="w-1 h-1 bg-violet-400 rounded-full"></div> */}
+            </div>
+          </button>
+        </div>
+
+        {/* Waveform visualization */}
+        <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
+          <div className="flex items-end space-x-px h-12 w-full px-4">
+            {Array.from({ length: 60 }).map((_, i) => (
+              <div 
+                key={i}
+                className="bg-gray-300 flex-grow rounded-t"
+                style={
+                  i === Math.floor((currentTime / totalTime) * 60) 
+                    ? { height: '80%', backgroundColor: '#7c3aed' }
+                    : { height: `${Math.random() * 60 + 20}%` }
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom row: Controls and duration */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={togglePlayback}
+              disabled={isLoading || !!error}
+              className="w-8 h-8 bg-violet-500 rounded flex items-center justify-center hover:bg-violet-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : isPlaying ? (
+                <div className="w-3 h-3 bg-white" />
+              ) : (
+                <div className="w-0 h-0 border-l-4 border-l-white border-y-3 border-y-transparent ml-0.5" />
+              )}
+            </button>
+            
+            <button
+              onClick={togglePlaybackRate}
+              className="text-gray-600 text-sm hover:text-gray-900 font-mono"
+            >
+              {playbackRate.toFixed(1)}x
+            </button>
+            
+            <div className="flex space-x-1">
+              <button className="p-1 text-gray-400 hover:text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 3L3 8L8 13V3Z" />
+                </svg>
+              </button>
+              <button className="p-1 text-gray-400 hover:text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 3L13 8L8 13V3Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="text-gray-500 text-sm font-mono">
+            {formatTime(currentTime)} / {formatTime(totalTime)}
+          </div>
+        </div>
+
         <audio
           ref={audioRef}
           src={audioUrl}
           preload="metadata"
           onWaiting={() => setIsLoading(true)}
           onCanPlay={() => setIsLoading(false)}
+          onError={handleError}
         />
         
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-violet-600">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(totalTime)}</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={totalTime ? (currentTime / totalTime) * 100 : 0}
-            onChange={handleSeek}
-            className="w-full h-2 bg-violet-100 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-600"
-          />
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={stopPlayback}
-            disabled={isLoading}
-            className="border-violet-200 text-violet-700 hover:bg-violet-50 rounded-xl"
-          >
-            <Square className="w-4 h-4" />
-          </Button>
-          
-          <Button
-            size="icon"
-            onClick={togglePlayback}
-            disabled={isLoading}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl w-12 h-12"
-          >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : isPlaying ? (
-              <Pause className="w-5 h-5" />
-            ) : (
-              <Play className="w-5 h-5 ml-1" />
-            )}
-          </Button>
-          
-          {duration && (
-            <Badge variant="secondary" className="bg-violet-50 text-violet-700 border-violet-200">
-              <Clock className="w-3 h-3 mr-1" />
-              {Math.ceil(duration / 60)} min
-            </Badge>
-          )}
-        </div>
-
         {isLoading && (
-          <p className="text-center text-sm text-violet-500">
+          <p className="text-center text-sm text-gray-500">
             Loading audio...
           </p>
+        )}
+        
+        {error && (
+          <div className="text-center text-sm text-red-500 bg-red-50 p-2 rounded border border-red-200">
+            {error}. Please try refreshing the page.
+          </div>
         )}
       </CardContent>
     </Card>

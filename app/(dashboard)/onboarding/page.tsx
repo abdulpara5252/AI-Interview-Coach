@@ -34,7 +34,11 @@ export default function OnboardingPage() {
 
   const mutation = useMutation({
     mutationFn: completeOnboarding,
-    onSuccess: () => router.push("/dashboard"),
+    onSuccess: async () => {
+      // Small delay to ensure database update propagates
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push("/dashboard");
+    },
   });
 
   const handleComplete = () => {

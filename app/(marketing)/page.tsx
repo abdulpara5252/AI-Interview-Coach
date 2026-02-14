@@ -368,7 +368,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ Pricing ═══════════ */}
+     {/* ═══════════ Pricing ═══════════ */}
       <section id="pricing" className="py-24 gradient-purple-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -381,14 +381,14 @@ export default function LandingPage() {
             </h2>
             <p className="text-xl text-violet-700/60">Choose the plan that fits your needs</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
             {pricingPlans.map((plan, index) => (
               <Card
                 key={index}
-                className={`relative p-8 transition-all duration-300 rounded-2xl ${
+                className={`relative p-8 transition-all duration-300 rounded-2xl flex flex-col ${
                   plan.popular
                     ? "border-2 border-violet-500 shadow-purple-xl scale-105 bg-white"
-                    : "border-violet-100/50 hover:shadow-purple-lg bg-white"
+                    : "border-2 border-violet-100/50 hover:shadow-purple-lg bg-white"
                 }`}
               >
                 {plan.popular && (
@@ -415,7 +415,7 @@ export default function LandingPage() {
                     {plan.cta}
                   </Button>
                 </Link>
-                <div className="space-y-4">
+                <div className="space-y-4 flex-grow">
                   {plan.features.map((feature, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-5 h-5 rounded-full gradient-purple flex items-center justify-center">

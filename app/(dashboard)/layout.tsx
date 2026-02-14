@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { DashboardWrapper } from "@/components/dashboard/DashboardWrapper";
 
 export default async function DashboardLayout({
   children,
@@ -56,12 +57,22 @@ export default async function DashboardLayout({
   }
 
   // During onboarding: render WITHOUT navbar (clean full-screen wizard)
-  if (!isOnboarded && pathname.startsWith("/onboarding")) {
+  // Check if we're in the onboarding route
+  const isInOnboardingRoute = pathname.startsWith("/onboarding");
+  
+  if (!isOnboarded && isInOnboardingRoute) {
     return (
       <div className="min-h-screen">
         {children}
       </div>
     );
+  }
+  
+  // If user just completed onboarding and was redirected to dashboard,
+  // make sure they see the full layout with navbar
+  if (!isOnboarded && !isInOnboardingRoute) {
+    // This shouldn't happen, but if it does, redirect to onboarding
+    redirect("/onboarding");
   }
 
   // Determine active nav link
@@ -79,77 +90,79 @@ export default async function DashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen gradient-purple-subtle">
-      {/* Header */}
-      <header className="sticky top-0 z-50 glass border-b border-violet-100/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            {/* Logo — fixed width left */}
-            <div className="flex-1 flex items-center">
-              <Link href="/dashboard" className="flex items-center gap-2.5 group">
-                <div className="gradient-purple p-2 rounded-xl shadow-purple-sm group-hover:shadow-purple transition-shadow">
-                  <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </div>
-                <span className="font-bold text-xl gradient-text-purple hidden sm:inline">HerinAI</span>
-              </Link>
-            </div>
+    <DashboardWrapper>
+      <div className="min-h-screen gradient-purple-subtle">
+        {/* Header */}
+        <header className="sticky top-0 z-50 glass border-b border-violet-100/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center h-16">
+              {/* Logo — fixed width left */}
+              <div className="flex-1 flex items-center">
+                <Link href="/dashboard" className="flex items-center gap-2.5 group">
+                  <div className="gradient-purple p-2 rounded-xl shadow-purple-sm group-hover:shadow-purple transition-shadow">
+                    <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                  </div>
+                  <span className="font-bold text-xl gradient-text-purple hidden sm:inline">HerinAI</span>
+                </Link>
+              </div>
 
-            {/* Navigation — centered */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => {
-                const isActive = activeLink === link.key;
-                if (link.isSpecial) {
+              {/* Navigation — centered */}
+              <nav className="hidden md:flex items-center gap-1">
+                {navLinks.map((link) => {
+                  const isActive = activeLink === link.key;
+                  if (link.isSpecial) {
+                    return (
+                      <Link
+                        key={link.key}
+                        href={link.href}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          isActive
+                            ? "gradient-purple-pink text-white shadow-purple"
+                            : "text-violet-700 hover:bg-violet-50 border border-violet-200"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  }
                   return (
                     <Link
                       key={link.key}
                       href={link.href}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         isActive
-                          ? "gradient-purple-pink text-white shadow-purple"
-                          : "text-violet-700 hover:bg-violet-50 border border-violet-200"
+                          ? "bg-violet-100 text-violet-900 font-semibold"
+                          : "text-violet-700 hover:bg-violet-50"
                       }`}
                     >
                       {link.label}
                     </Link>
                   );
-                }
-                return (
-                  <Link
-                    key={link.key}
-                    href={link.href}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-violet-100 text-violet-900 font-semibold"
-                        : "text-violet-700 hover:bg-violet-50"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
+                })}
+              </nav>
 
-            {/* User Button — fixed width right */}
-            <div className="flex-1 flex items-center justify-end gap-3">
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: "h-9 w-9 ring-2 ring-violet-200 ring-offset-2",
-                  },
-                }}
-              />
+              {/* User Button — fixed width right */}
+              <div className="flex-1 flex items-center justify-end gap-3">
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-9 w-9 ring-2 ring-violet-200 ring-offset-2",
+                    },
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {children}
+        </main>
+      </div>
+    </DashboardWrapper>
   );
 }

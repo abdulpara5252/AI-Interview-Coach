@@ -47,6 +47,7 @@ model Session {
   transcript    Json?
   feedback      Json?
   audioUrl      String?
+  conversationId String?
   shareToken    String?   @unique @default(cuid())
   isPublic      Boolean   @default(false)
   createdAt     DateTime  @default(now())
