@@ -34,38 +34,48 @@ export async function POST(req: Request) {
     return new Response("Invalid signature", { status: 400 });
   }
 
-  const { id: clerkId, email_addresses, first_name, last_name, image_url } = evt.data;
-
   try {
-    if (evt.type === "user.created") {
-      const primaryEmail = email_addresses?.find((e) => e.id === evt.data.primary_email_address_id)?.email_address
+    if (evt.type === "user.created" || evt.type === "user.updated") {
+      // Type guard to ensure we have user data
+      const userData = evt.data as {
+        id: string;
+        email_addresses?: Array<{ id: string; email_address: string }>;
+        primary_email_address_id?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        image_url?: string | null;
+      };
+      
+      const { id: clerkId, email_addresses, first_name, last_name, image_url } = userData;
+      const primaryEmail = email_addresses?.find((e) => e.id === userData.primary_email_address_id)?.email_address
         ?? email_addresses?.[0]?.email_address;
       if (!primaryEmail) {
         console.error("[CLERK_WEBHOOK] No email for user.created", clerkId);
         return new Response("No email", { status: 400 });
       }
-      await prisma.user.create({
-        data: {
-          clerkId,
-          email: primaryEmail,
-          name: [first_name, last_name].filter(Boolean).join(" ") || null,
-          avatarUrl: image_url ?? null,
-        },
-      });
-    } else if (evt.type === "user.updated") {
-      const primaryEmail = email_addresses?.find((e) => e.id === evt.data.primary_email_address_id)?.email_address
-        ?? email_addresses?.[0]?.email_address;
-      await prisma.user.updateMany({
-        where: { clerkId },
-        data: {
-          ...(primaryEmail && { email: primaryEmail }),
-          name: [first_name, last_name].filter(Boolean).join(" ") || null,
-          avatarUrl: image_url ?? null,
-        },
-      });
+      if (evt.type === "user.created") {
+        await prisma.user.create({
+          data: {
+            clerkId,
+            email: primaryEmail,
+            name: [first_name, last_name].filter(Boolean).join(" ") || null,
+            avatarUrl: image_url ?? null,
+          },
+        });
+      } else if (evt.type === "user.updated") {
+        await prisma.user.updateMany({
+          where: { clerkId },
+          data: {
+            ...(primaryEmail && { email: primaryEmail }),
+            name: [first_name, last_name].filter(Boolean).join(" ") || null,
+            avatarUrl: image_url ?? null,
+          },
+        });
+      }
     } else if (evt.type === "user.deleted") {
-      if (evt.data.id) {
-        await prisma.user.deleteMany({ where: { clerkId: evt.data.id } });
+      const deleteData = evt.data as { id?: string };
+      if (deleteData.id) {
+        await prisma.user.deleteMany({ where: { clerkId: deleteData.id } });
       }
     }
   } catch (err) {
