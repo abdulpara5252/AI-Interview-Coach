@@ -7,6 +7,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Separator } from "@/components/ui/separator";
 import { getScoreColor, getGradeColor } from "@/lib/utils";
 import { QuestionFeedback } from "./QuestionFeedback";
+import { TranscriptDisplay } from "./TranscriptDisplay";
+import { AudioPlayer } from "./AudioPlayer";
+import { SessionSummary } from "./SessionSummary";
 import { CheckCircle2, TrendingUp, Copy, Share2, Lock, Globe } from "lucide-react";
 
 interface SessionFeedback {
@@ -16,6 +19,8 @@ interface SessionFeedback {
   feedback: unknown;
   userId: string;
   role: string;
+  interviewType: string;
+  difficulty: string;
   createdAt: string;
   duration: number;
   questions: { id: string; text: string; order: number }[];
@@ -35,9 +40,11 @@ interface SessionFeedback {
     } | null;
     question: { text: string };
   }[];
+  transcript?: { speaker: "ai" | "user"; text: string; timestamp: string }[] | null;
+  audioUrl?: string | null;
   shareToken: string | null;
   isPublic: boolean;
-  user: { name: string | null };
+  user?: { name: string | null }; // Made optional to prevent undefined errors
 }
 
 interface FeedbackReportProps {
@@ -46,32 +53,32 @@ interface FeedbackReportProps {
 }
 
 const SCORE_COLORS = {
-  contentAccuracy: "text-blue-600",
-  communication: "text-purple-600",
-  problemSolving: "text-green-600",
-  confidence: "text-orange-600",
+  contentAccuracy: "text-violet-600",
+  communication: "text-fuchsia-600",
+  problemSolving: "text-emerald-600",
+  confidence: "text-amber-600",
 };
 
 const SCORE_BG_COLORS = {
-  contentAccuracy: "bg-blue-50 border-blue-200",
-  communication: "bg-purple-50 border-purple-200",
-  problemSolving: "bg-green-50 border-green-200",
-  confidence: "bg-orange-50 border-orange-200",
+  contentAccuracy: "bg-violet-50 border-violet-200",
+  communication: "bg-fuchsia-50 border-fuchsia-200",
+  problemSolving: "bg-emerald-50 border-emerald-200",
+  confidence: "bg-amber-50 border-amber-200",
 };
 
 function getScoreBarColor(score: number) {
-  if (score >= 70) return "bg-green-500";
-  if (score >= 50) return "bg-yellow-500";
-  return "bg-red-500";
+  if (score >= 70) return "bg-violet-500";
+  if (score >= 50) return "bg-amber-500";
+  return "bg-rose-500";
 }
 
 function getGradeGradient(grade: string) {
   const gradeMap: Record<string, string> = {
-    A: "from-green-600 to-green-400",
-    B: "from-blue-600 to-blue-400",
-    C: "from-yellow-600 to-yellow-400",
-    D: "from-orange-600 to-orange-400",
-    F: "from-red-600 to-red-400",
+    A: "from-violet-600 to-purple-400",
+    B: "from-purple-600 to-fuchsia-400",
+    C: "from-amber-600 to-yellow-400",
+    D: "from-orange-600 to-amber-400",
+    F: "from-rose-600 to-red-400",
   };
   return gradeMap[grade] || "from-gray-600 to-gray-400";
 }
@@ -144,25 +151,27 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-8 text-white shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <div className="gradient-purple-dark rounded-2xl p-8 text-white shadow-purple-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           <div className="space-y-2">
-            <p className="text-sm text-slate-300">Candidate</p>
-            <h1 className="text-3xl font-bold">{session.user.name || "Candidate"}</h1>
-            <p className="text-slate-300">{session.role}</p>
+            <p className="text-sm text-violet-200">Candidate</p>
+            <h1 className="text-3xl font-bold">{session.user?.name || "Candidate"}</h1>
+            <p className="text-violet-200">{session.role}</p>
           </div>
           <div className="space-y-3 md:col-span-2 md:text-right">
             <div className="flex flex-col md:flex-row gap-3 items-start md:items-center md:justify-end">
-              <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-                <span className="text-sm text-slate-300">Date:</span>
+              <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 backdrop-blur-sm">
+                <span className="text-sm text-violet-200">Date:</span>
                 <span className="font-semibold">{formatDate(session.createdAt)}</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-                <span className="text-sm text-slate-300">Duration:</span>
+              <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 backdrop-blur-sm">
+                <span className="text-sm text-violet-200">Duration:</span>
                 <span className="font-semibold">{session.duration} min</span>
               </div>
               <div
-                className={`bg-gradient-to-r ${getGradeGradient(grade)} rounded-lg px-4 py-2 font-bold text-lg`}
+                className={`bg-gradient-to-r ${getGradeGradient(grade)} rounded-xl px-4 py-2 font-bold text-lg shadow-lg`}
               >
                 Grade: {grade}
               </div>
@@ -171,61 +180,62 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
         </div>
       </div>
 
+      {/* Session Summary - NEW */}
+      <SessionSummary session={session} />
+
+      {/* Transcript Display - NEW */}
+      {session.transcript && Array.isArray(session.transcript) && session.transcript.length > 0 && (
+        <TranscriptDisplay 
+          transcript={session.transcript.map(entry => ({
+            ...entry,
+            timestamp: new Date(entry.timestamp)
+          }))} 
+        />
+      )}
+
+      {/* Audio Player - NEW */}
+      {(session.audioUrl || process.env.NODE_ENV === 'development') && (
+        <AudioPlayer 
+          audioUrl={session.audioUrl || "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav"} 
+          duration={session.duration * 60} 
+        />
+      )}
+
       {/* Overall Score Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Animated Circular Score */}
-        <Card className="lg:col-span-1 border-0 shadow-md">
+        <Card className="lg:col-span-1 border-violet-100/50 shadow-purple-sm rounded-2xl">
           <CardContent className="pt-8 flex flex-col items-center justify-center">
             <div className="relative w-40 h-40 mb-6">
-              <svg
-                className="transform -rotate-90 w-full h-full"
-                viewBox="0 0 120 120"
-              >
-                {/* Background circle */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="54"
-                  fill="none"
-                  stroke="#f0f4f8"
-                  strokeWidth="6"
-                />
-                {/* Progress circle with gradient */}
+              <svg className="transform -rotate-90 w-full h-full" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="#f5f3ff" strokeWidth="6" />
                 <defs>
                   <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%" stopColor="#7c3aed" />
+                    <stop offset="100%" stopColor="#a855f7" />
                   </linearGradient>
                 </defs>
                 <circle
-                  cx="60"
-                  cy="60"
-                  r="54"
-                  fill="none"
-                  stroke="url(#scoreGradient)"
-                  strokeWidth="6"
+                  cx="60" cy="60" r="54" fill="none"
+                  stroke="url(#scoreGradient)" strokeWidth="6"
                   strokeDasharray={`${(score / 100) * 339.29} 339.29`}
                   strokeLinecap="round"
-                  style={{
-                    transition: "stroke-dasharray 0.8s ease-in-out",
-                  }}
+                  style={{ transition: "stroke-dasharray 0.8s ease-in-out" }}
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-4xl font-bold text-slate-900">{score}</p>
-                  <p className="text-sm text-slate-500">/ 100</p>
+                  <p className="text-4xl font-bold text-gray-900">{score}</p>
+                  <p className="text-sm text-violet-500">/ 100</p>
                 </div>
               </div>
             </div>
-            <p className="text-center text-slate-600 font-medium">Overall Score</p>
+            <p className="text-center text-violet-700/60 font-medium">Overall Score</p>
           </CardContent>
         </Card>
 
-        {/* Score Dimensions */}
-        <Card className="lg:col-span-2 border-0 shadow-md">
+        <Card className="lg:col-span-2 border-violet-100/50 shadow-purple-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg">Score Breakdown</CardTitle>
+            <CardTitle className="text-lg text-gray-900">Score Breakdown</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {Object.entries(avgScores).map(([key, value]) => {
@@ -239,7 +249,7 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
               return (
                 <div
                   key={key}
-                  className={`p-3 rounded-lg border ${
+                  className={`p-3 rounded-xl border ${
                     SCORE_BG_COLORS[key as keyof typeof SCORE_BG_COLORS]
                   }`}
                 >
@@ -247,7 +257,7 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
                     <span className={`font-semibold ${SCORE_COLORS[key as keyof typeof SCORE_COLORS]}`}>
                       {displayKey}
                     </span>
-                    <span className="text-2xl font-bold text-slate-900">{value}%</span>
+                    <span className="text-2xl font-bold text-gray-900">{value}%</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -264,44 +274,42 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
 
       {/* Strengths & Improvements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Strengths */}
-        <Card className="border-0 shadow-md">
+        <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <CardTitle className="text-lg flex items-center gap-2 text-gray-900">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               Key Strengths
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {allStrengths.length > 0 ? (
               allStrengths.map((strength, i) => (
-                <div key={i} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-slate-700">{strength}</p>
+                <div key={i} className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <p className="text-sm text-gray-700">{strength}</p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No strengths recorded yet.</p>
+              <p className="text-sm text-violet-500">No strengths recorded yet.</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Improvements */}
-        <Card className="border-0 shadow-md">
+        <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-orange-600" />
+            <CardTitle className="text-lg flex items-center gap-2 text-gray-900">
+              <TrendingUp className="w-5 h-5 text-amber-600" />
               Areas for Improvement
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {allImprovements.length > 0 ? (
               allImprovements.map((improvement, i) => (
-                <div key={i} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <p className="text-sm text-slate-700">{improvement}</p>
+                <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm text-gray-700">{improvement}</p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No improvements needed.</p>
+              <p className="text-sm text-violet-500">No improvements needed.</p>
             )}
           </CardContent>
         </Card>
@@ -309,28 +317,28 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
 
       {/* Filler Words Card */}
       {totalFillerWords > 0 && (
-        <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-50">
+        <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50">
           <CardHeader>
-            <CardTitle className="text-lg">Filler Words Analysis</CardTitle>
+            <CardTitle className="text-lg text-gray-900">Filler Words Analysis</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="bg-orange-100 rounded-full p-4">
-                <p className="text-2xl font-bold text-orange-600">{totalFillerWords}</p>
+              <div className="bg-amber-100 rounded-full p-4">
+                <p className="text-2xl font-bold text-amber-600">{totalFillerWords}</p>
               </div>
               <div>
-                <p className="font-semibold text-slate-900">Total Filler Words</p>
-                <p className="text-sm text-slate-600">Words like "um", "uh", "like", etc.</p>
+                <p className="font-semibold text-gray-900">Total Filler Words</p>
+                <p className="text-sm text-violet-700/60">Words like &quot;um&quot;, &quot;uh&quot;, &quot;like&quot;, etc.</p>
               </div>
             </div>
             {allFillerExamples.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Examples found:</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Examples found:</p>
                 <div className="flex flex-wrap gap-2">
                   {allFillerExamples.map((word, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1 bg-yellow-200 text-slate-800 rounded-full text-sm font-medium"
+                      className="px-3 py-1 bg-amber-200 text-gray-800 rounded-full text-sm font-medium"
                     >
                       {word}
                     </span>
@@ -342,12 +350,12 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
         </Card>
       )}
 
-      {/* Question Breakdown */}
-      <Card className="border-0 shadow-md">
+      {/* Detailed Feedback */}
+      <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-lg">Question Breakdown</CardTitle>
-          <p className="text-sm text-slate-600 mt-2">
-            Click to expand each question and see detailed feedback
+          <CardTitle className="text-lg text-gray-900">Detailed Question Feedback</CardTitle>
+          <p className="text-sm text-violet-700/60 mt-2">
+            Click to expand each question and see detailed analysis
           </p>
         </CardHeader>
         <CardContent>
@@ -368,24 +376,24 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
       </Card>
 
       {/* Share Section */}
-      <Card className="border-0 shadow-md bg-gradient-to-r from-slate-50 to-blue-50">
+      <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl bg-gradient-to-r from-violet-50/50 to-fuchsia-50/50">
         <CardHeader>
-          <CardTitle className="text-lg">Share Report</CardTitle>
+          <CardTitle className="text-lg text-gray-900">Share Report</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Separator />
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
+          <Separator className="bg-violet-100" />
+          <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-violet-100">
             <div className="flex items-center gap-3">
               {isPublic ? (
-                <Globe className="w-5 h-5 text-blue-600" />
+                <Globe className="w-5 h-5 text-violet-600" />
               ) : (
-                <Lock className="w-5 h-5 text-slate-400" />
+                <Lock className="w-5 h-5 text-violet-400" />
               )}
               <div>
-                <p className="font-semibold text-slate-900">
+                <p className="font-semibold text-gray-900">
                   {isPublic ? "Public" : "Private"} Report
                 </p>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-violet-700/60">
                   {isPublic
                     ? "Anyone with the link can view this report"
                     : "Only you can access this report"}
@@ -395,7 +403,7 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
             <Button
               variant={isPublic ? "default" : "outline"}
               onClick={() => setIsPublic(!isPublic)}
-              className="rounded-lg"
+              className={`rounded-xl ${isPublic ? "gradient-purple text-white" : "border-violet-200 text-violet-700"}`}
             >
               {isPublic ? "Make Private" : "Make Public"}
             </Button>
@@ -404,14 +412,14 @@ export function FeedbackReport({ session, onShare }: FeedbackReportProps) {
           <div className="flex gap-2">
             <Button
               onClick={handleCopyLink}
-              className="flex-1 rounded-lg gap-2"
+              className="flex-1 rounded-xl gap-2 border-violet-200 text-violet-700 hover:bg-violet-50"
               variant="outline"
               disabled={!session.shareToken}
             >
               <Copy className="w-4 h-4" />
               {copied ? "Copied!" : "Copy Link"}
             </Button>
-            <Button className="flex-1 rounded-lg gap-2" variant="outline">
+            <Button className="flex-1 rounded-xl gap-2 border-violet-200 text-violet-700 hover:bg-violet-50" variant="outline">
               <Share2 className="w-4 h-4" />
               Share
             </Button>

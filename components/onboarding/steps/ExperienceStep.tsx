@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Check } from "lucide-react";
 
 interface ExperienceStepProps {
   selectedLevel: string;
@@ -41,11 +42,11 @@ export default function ExperienceStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          What's your experience level?
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          What&apos;s your <span className="gradient-text-purple">experience level</span>?
         </h2>
-        <p className="text-muted-foreground">
-          We'll adjust question difficulty based on your level
+        <p className="text-violet-700/60">
+          We&apos;ll adjust question difficulty based on your level
         </p>
       </div>
 
@@ -54,29 +55,34 @@ export default function ExperienceStep({
           <Card
             key={option.id}
             onClick={() => onLevelSelect(option.id)}
-            className={`p-5 cursor-pointer transition-all duration-200 ${
+            className={`p-5 cursor-pointer transition-all duration-200 rounded-xl group ${
               selectedLevel === option.id
-                ? "border-primary border-2 bg-blue-50 shadow-md"
-                : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                ? "border-2 border-violet-500 bg-violet-50 shadow-purple"
+                : "border-violet-100/50 hover:border-violet-200 hover:shadow-purple-sm bg-white"
             }`}
           >
             <div className="flex gap-4">
               <div className="flex-shrink-0">
-                <span className="text-4xl">{option.emoji}</span>
+                <span className="text-4xl group-hover:scale-110 transition-transform inline-block">{option.emoji}</span>
               </div>
               <div className="flex-1">
                 <div className="flex items-baseline gap-2 mb-1">
-                  <h3 className="font-bold text-lg text-foreground">
+                  <h3 className="font-bold text-lg text-gray-900">
                     {option.label}
                   </h3>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-violet-700/60">
                     {option.years}
                   </span>
+                  {selectedLevel === option.id && (
+                    <div className="ml-auto w-6 h-6 rounded-full gradient-purple flex items-center justify-center">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">
+                <p className="text-sm text-violet-700/60 mb-2">
                   {option.description}
                 </p>
-                <div className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                <div className="inline-block px-3 py-1 bg-violet-100 text-violet-700 text-xs font-medium rounded-full">
                   {option.difficulty}
                 </div>
               </div>
@@ -86,8 +92,8 @@ export default function ExperienceStep({
       </div>
 
       {selectedLevel && (
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-          <p className="text-sm text-blue-900">
+        <div className="p-4 bg-violet-50 border border-violet-200/50 rounded-xl">
+          <p className="text-sm text-violet-800">
             ✓ Experience level set to{" "}
             <strong>
               {EXPERIENCE_OPTIONS.find((o) => o.id === selectedLevel)?.label}

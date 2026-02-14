@@ -33,13 +33,14 @@ async function fetchSession(sessionId: string) {
   }>;
 }
 
-async function completeSession(sessionId: string, transcript: TranscriptEntry[]) {
+async function completeSession(sessionId: string, transcript: TranscriptEntry[], audioUrl?: string) {
   const res = await fetch("/api/session/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       sessionId,
       transcript: transcript.map((e) => ({ speaker: e.speaker, text: e.text })),
+      audioUrl,
     }),
   });
   if (!res.ok) {
@@ -64,12 +65,12 @@ export default function InterviewSessionPage() {
     enabled: !!sessionId,
   });
 
-  const onSessionEnd = useCallback(() => {
+  const onSessionEnd = useCallback((audioUrl?: string) => {
     if (completedRef.current) return;
     completedRef.current = true;
     setCompleting(true);
     setEndDialogOpen(false);
-    completeSession(sessionId, transcript)
+    completeSession(sessionId, transcript, audioUrl)
       .then(() => router.push(`/interview/${sessionId}/feedback`))
       .catch(() => {
         completedRef.current = false;
@@ -106,12 +107,12 @@ export default function InterviewSessionPage() {
 
   if (isLoading || !session) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 flex items-center justify-center p-6">
         <div className="w-full max-w-4xl space-y-6">
-          <Skeleton className="h-10 w-48 bg-slate-800" />
+          <Skeleton className="h-10 w-48 bg-violet-200" />
           <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6">
-            <Skeleton className="h-80 bg-slate-800" />
-            <Skeleton className="h-80 bg-slate-800" />
+            <Skeleton className="h-80 bg-violet-200 rounded-2xl" />
+            <Skeleton className="h-80 bg-violet-200 rounded-2xl" />
           </div>
         </div>
       </div>
@@ -125,9 +126,9 @@ export default function InterviewSessionPage() {
     .map((q) => ({ text: q.text }));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 text-gray-900 flex flex-col">
       {/* Top bar */}
-      <header className="flex-shrink-0 border-b border-slate-800 bg-slate-900/80 px-6 py-4">
+      <header className="flex-shrink-0 border-b border-violet-100 bg-white/80 backdrop-blur-sm px-6 py-4 shadow-purple-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <SessionTimer
@@ -135,28 +136,28 @@ export default function InterviewSessionPage() {
               isActive={voice.callStatus === "active"}
               onExpire={voice.stopSession}
             />
-            <span className="text-slate-400 text-sm">
+            <span className="text-violet-700 text-sm font-medium">
               Question {voice.currentQuestionIndex + 1} of {session.questions.length}
             </span>
             <Badge
               variant={voice.callStatus === "active" ? "default" : "secondary"}
               className={
                 voice.callStatus === "active"
-                  ? "bg-blue-600 hover:bg-blue-700 text-white border-0"
-                  : "bg-slate-700 text-slate-300 border-slate-600"
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0 shadow-purple"
+                  : "bg-violet-100 text-violet-700 border-violet-200"
               }
             >
               {voice.callStatus}
             </Badge>
             {micMuted && (
-              <span className="text-xs text-amber-400">Mic muted (Space to toggle)</span>
+              <span className="text-xs text-amber-600 font-medium">Mic muted (Space to toggle)</span>
             )}
           </div>
           <Button
             variant="destructive"
             size="sm"
             onClick={() => setEndDialogOpen(true)}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-lg rounded-xl"
           >
             End Session
           </Button>
@@ -167,19 +168,19 @@ export default function InterviewSessionPage() {
       <main className="flex-1 flex flex-col min-h-0 p-6">
         {(voice.callStatus === "idle" || voice.callStatus === "connecting") && (
           <div className="flex-1 flex items-center justify-center">
-            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-8 text-center max-w-md">
-              <p className="text-slate-300 mb-6">
+            <div className="rounded-2xl border border-violet-100 bg-white/80 backdrop-blur-sm p-8 text-center max-w-md shadow-purple-xl">
+              <p className="text-violet-700 mb-6 font-medium">
                 Ready when you are. Click below to start the voice interview.
               </p>
               <Button
                 onClick={voice.startSession}
                 disabled={voice.callStatus === "connecting"}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="gradient-purple-pink text-white shadow-purple hover:shadow-purple-lg hover:opacity-90 rounded-xl px-6 transition-all"
               >
                 {voice.callStatus === "connecting" ? "Connecting…" : "Start interview"}
               </Button>
               {voice.error && (
-                <p className="mt-4 text-sm text-red-400">{voice.error}</p>
+                <p className="mt-4 text-sm text-red-500">{voice.error}</p>
               )}
             </div>
           </div>
@@ -209,20 +210,20 @@ export default function InterviewSessionPage() {
 
       {/* End Session confirmation — Esc opens this */}
       <AlertDialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
-        <AlertDialogContent className="bg-slate-900 border-slate-700 text-slate-100">
+        <AlertDialogContent className="bg-white border-violet-100 text-gray-900 rounded-2xl shadow-purple-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>End Session?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-violet-600">
               Your transcript will be saved and we&apos;ll generate your feedback report.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700">
+            <AlertDialogCancel className="bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100 rounded-xl">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={voice.stopSession}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-gradient-to-r from-rose-500 to-red-500 text-white hover:from-rose-600 hover:to-red-600 rounded-xl"
             >
               End & get feedback
             </AlertDialogAction>
@@ -232,10 +233,10 @@ export default function InterviewSessionPage() {
 
       {/* Completion overlay */}
       {completing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90">
-          <div className="rounded-xl border border-slate-700 bg-slate-800 p-8 text-center shadow-xl">
-            <p className="font-medium text-slate-100">Great work! Generating your feedback…</p>
-            <p className="text-slate-400 text-sm mt-1">You&apos;ll be redirected in a moment.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-violet-900/90 to-purple-900/90">
+          <div className="rounded-2xl border border-violet-200/30 bg-white/10 backdrop-blur-sm p-8 text-center shadow-purple-xl">
+            <p className="font-medium text-white text-lg">Great work! Generating your feedback…</p>
+            <p className="text-violet-200 text-sm mt-1">You&apos;ll be redirected in a moment.</p>
           </div>
         </div>
       )}

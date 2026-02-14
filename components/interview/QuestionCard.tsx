@@ -22,25 +22,25 @@ export function QuestionCard({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <h3 className="text-sm font-semibold text-slate-300 mb-3">Current Question</h3>
-      <Card className="flex-1 border-slate-700/50 bg-slate-800/30">
+      <h3 className="text-sm font-semibold text-violet-700 mb-3">Current Question</h3>
+      <Card className="flex-1 border-violet-100/50 bg-white/80 backdrop-blur-sm shadow-purple-sm rounded-2xl">
         <CardHeader className="pb-2">
-          <span className="text-slate-400 text-sm">
+          <span className="text-violet-500 text-sm font-medium">
             Question {currentQuestion.order} of {totalQuestions}
           </span>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-slate-100 text-lg font-medium leading-relaxed">
+          <p className="text-gray-900 text-lg font-medium leading-relaxed">
             {currentQuestion.text}
           </p>
           {upcomingQuestions.length > 0 && (
-            <div className="pt-4 border-t border-slate-700/50">
-              <p className="text-slate-500 text-xs font-medium mb-2">Upcoming</p>
+            <div className="pt-4 border-t border-violet-100">
+              <p className="text-violet-400 text-xs font-medium mb-2">Upcoming</p>
               <ul className="space-y-2">
                 {upcomingQuestions.map((q, i) => (
                   <li
                     key={i}
-                    className="text-sm text-slate-500/80 line-clamp-2 blur-[2px] select-none"
+                    className="text-sm text-violet-400/80 line-clamp-2 blur-[2px] select-none"
                   >
                     {q.text}
                   </li>
@@ -51,8 +51,8 @@ export function QuestionCard({
         </CardContent>
       </Card>
       <div className="mt-4">
-        <Progress value={progressValue} className="h-2 bg-slate-700 [&>div]:bg-blue-500" />
-        <p className="text-xs text-slate-500 mt-1">
+        <Progress value={progressValue} className="h-2 bg-violet-100 [&>div]:gradient-purple" />
+        <p className="text-xs text-violet-500 mt-1">
           {completedCount} of {totalQuestions} questions
         </p>
       </div>

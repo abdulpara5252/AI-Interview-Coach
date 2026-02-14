@@ -24,7 +24,7 @@ function getStatusText(
   if (callStatus === "idle") return "Start the session to begin";
   if (callStatus === "ended") return "Session ended";
   if (isUserSpeaking) return "Your turn — speak your answer";
-  if (isSpeaking) return "Alex is speaking…";
+  if (isSpeaking) return "Claire is speaking…";
   return "Processing…";
 }
 
@@ -49,15 +49,15 @@ export function TranscriptPanel({
 
   return (
     <div className={cn("flex flex-col h-full min-h-0", className)}>
-      <h3 className="text-sm font-semibold text-slate-300 mb-3">Live Transcript</h3>
+      <h3 className="text-sm font-semibold text-violet-700 mb-3">Live Transcript</h3>
       <div
         ref={scrollRef}
         className={cn(
-          "flex-1 flex flex-col gap-3 overflow-y-auto rounded-lg border border-slate-700/50 bg-slate-800/20 p-4 min-h-[200px]"
+          "flex-1 flex flex-col gap-3 overflow-y-auto rounded-2xl border border-violet-100/50 bg-white/50 backdrop-blur-sm p-4 min-h-[200px] shadow-purple-sm"
         )}
       >
         {entries.length === 0 && (
-          <p className="text-slate-500 text-sm">Transcript will appear here as you speak.</p>
+          <p className="text-violet-400 text-sm">Transcript will appear here as you speak.</p>
         )}
         {entries.map((e, i) => (
           <div
@@ -66,14 +66,14 @@ export function TranscriptPanel({
           >
             <div
               className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                "max-w-[85%] rounded-xl px-3 py-2 text-sm",
                 e.speaker === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-700/60 text-slate-200 border border-slate-600/50"
+                  ? "gradient-purple-pink text-white shadow-md"
+                  : "bg-violet-50 text-gray-800 border border-violet-100"
               )}
             >
               <span className="font-medium text-xs opacity-80">
-                {e.speaker === "user" ? "You" : "Alex"}
+                {e.speaker === "user" ? "You" : "Claire"}
               </span>
               <p className="mt-0.5">{e.text}</p>
             </div>

@@ -23,6 +23,7 @@ export async function GET(
       include: {
         questions: { orderBy: { order: "asc" } },
         answers: { include: { question: true }, orderBy: { createdAt: "asc" } },
+        user: { select: { name: true } },
       },
     });
     if (!session) {

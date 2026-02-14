@@ -33,7 +33,7 @@ export default function PublicReportPage() {
   return (
     <div className="container py-12">
       <p className="text-muted-foreground text-sm mb-6">
-        Shared interview report · HirinAi
+        Shared interview report · HerinAI
       </p>
       <FeedbackReport session={session} />
     </div>

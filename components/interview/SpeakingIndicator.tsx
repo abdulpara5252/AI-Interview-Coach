@@ -29,8 +29,8 @@ export function SpeakingIndicator({
         {/* Pulsing circle when user is speaking */}
         {isUserSpeaking && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-20 w-20 rounded-full bg-blue-500/30 animate-ping" />
-            <div className="absolute h-16 w-16 rounded-full bg-blue-500/50" />
+            <div className="h-20 w-20 rounded-full bg-purple-500/30 animate-ping" />
+            <div className="absolute h-16 w-16 rounded-full bg-purple-500/50" />
           </div>
         )}
         {/* Waveform bars when AI is speaking */}
@@ -39,7 +39,7 @@ export function SpeakingIndicator({
             {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div
                 key={i}
-                className="w-1.5 rounded-full bg-blue-500 animate-pulse"
+                className="w-1.5 rounded-full bg-purple-500 animate-pulse"
                 style={{
                   height: `${24 + Math.sin(i * 0.8) * 16}px`,
                   animationDelay: `${i * 0.1}s`,
@@ -52,15 +52,15 @@ export function SpeakingIndicator({
         {!isUserSpeaking && !isAISpeaking && (
           <div
             className={cn(
-              "flex h-20 w-20 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-800/50",
-              isConnecting && "border-blue-500/50 animate-pulse"
+              "flex h-20 w-20 items-center justify-center rounded-full border-2 border-violet-200 bg-white/80",
+              isConnecting && "border-purple-400/50 animate-pulse"
             )}
           >
-            <Mic className="h-8 w-8 text-slate-400" />
+            <Mic className="h-8 w-8 text-violet-500" />
           </div>
         )}
       </div>
-      <p className="text-sm text-slate-400">{statusText}</p>
+      <p className="text-sm text-violet-600 font-medium">{statusText}</p>
     </div>
   );
 }

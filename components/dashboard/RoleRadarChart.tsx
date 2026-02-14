@@ -50,24 +50,24 @@ export function RoleRadarChart({ dimensionAverages }: RoleRadarChartProps) {
         data={data}
         margin={{ top: 20, right: 30, bottom: 20, left: 30 }}
       >
-        <PolarGrid stroke="#e2e8f0" />
+        <PolarGrid stroke="#ede9fe" />
         <PolarAngleAxis
           dataKey="name"
-          tick={{ fontSize: 12, fill: "#64748b" }}
+          tick={{ fontSize: 12, fill: "#8b5cf6" }}
         />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 100]}
-          tick={{ fontSize: 12, fill: "#64748b" }}
+          tick={{ fontSize: 12, fill: "#a78bfa" }}
         />
         <Radar
           name="Current Skills"
           dataKey="value"
-          stroke="#2563eb"
-          fill="#2563eb"
-          fillOpacity={0.3}
-          dot={{ fill: "#2563eb", r: 4 }}
-          activeDot={{ r: 6 }}
+          stroke="#7c3aed"
+          fill="#7c3aed"
+          fillOpacity={0.25}
+          dot={{ fill: "#7c3aed", r: 4, strokeWidth: 2, stroke: "#fff" }}
+          activeDot={{ r: 6, fill: "#a855f7" }}
         />
       </RadarChart>
     </ResponsiveContainer>

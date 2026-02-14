@@ -81,9 +81,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Body must be an object" }, { status: 400 });
+    }
+
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
     const transcriptItems = Array.isArray(body.transcript) ? body.transcript : [];
+    const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl : null;
 
     if (!sessionId) {
       return NextResponse.json({ error: "sessionId required" }, { status: 400 });
@@ -183,6 +193,7 @@ export async function POST(req: Request) {
         grade,
         completedAt: new Date(),
         transcript: transcriptItems,
+        audioUrl,
         feedback: { overallScore, grade },
       },
     });

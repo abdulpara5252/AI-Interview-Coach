@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROLES, INTERVIEW_TYPES, DIFFICULTIES } from "@/types";
-import { ArrowRight, Microphone, Loader2 } from "lucide-react";
+import { ArrowRight, Mic, Loader2, Sparkles } from "lucide-react";
 
 async function createSession(payload: {
   role: string;
@@ -39,20 +39,23 @@ const DURATIONS = [15, 30, 45, 60] as const;
 
 const DIFFICULTY_CONFIG = {
   easy: {
-    color: "bg-green-50 border-green-200 hover:bg-green-100",
-    badge: "bg-green-100 text-green-700",
+    color: "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+    activeColor: "bg-emerald-50 border-violet-500",
+    badge: "bg-emerald-100 text-emerald-700",
     title: "Easy",
     description: "Fundamental concepts, junior-level questions",
   },
   medium: {
-    color: "bg-yellow-50 border-yellow-200 hover:bg-yellow-100",
-    badge: "bg-yellow-100 text-yellow-700",
+    color: "bg-amber-50 border-amber-200 hover:bg-amber-100",
+    activeColor: "bg-amber-50 border-violet-500",
+    badge: "bg-amber-100 text-amber-700",
     title: "Medium",
     description: "Mid-level complexity, intermediate experience",
   },
   hard: {
-    color: "bg-red-50 border-red-200 hover:bg-red-100",
-    badge: "bg-red-100 text-red-700",
+    color: "bg-rose-50 border-rose-200 hover:bg-rose-100",
+    activeColor: "bg-rose-50 border-violet-500",
+    badge: "bg-rose-100 text-rose-700",
     title: "Hard",
     description: "Advanced scenarios, senior-level challenges",
   },
@@ -71,33 +74,38 @@ export default function NewInterviewPage() {
   });
 
   const isFormValid = role && interviewType && difficulty;
-  const difficultyConfig = difficulty ? DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG] : null;
 
   return (
     <div className="mx-auto max-w-2xl py-8 px-4">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Microphone className="h-6 w-6 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Start New Interview Session</h1>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-100/80 text-violet-700 text-sm font-medium border border-violet-200/50 mb-4">
+          <Sparkles className="h-4 w-4" />
+          New Session
         </div>
-        <p className="text-gray-600">Set up your interview parameters and prepare for practice</p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="gradient-purple p-2.5 rounded-xl shadow-purple-sm">
+            <Mic className="h-6 w-6 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Start New Interview</h1>
+        </div>
+        <p className="text-violet-700/60 ml-14">Set up your interview parameters and prepare for practice</p>
       </div>
 
       {/* Main Card */}
-      <Card className="border border-gray-200 shadow-sm">
-        <CardContent className="pt-6">
+      <Card className="border-violet-100/50 shadow-purple-sm rounded-2xl overflow-hidden">
+        <CardContent className="pt-8 pb-8">
           <div className="space-y-8">
             {/* Role Selection */}
             <div>
-              <Label className="text-sm font-semibold text-gray-700 mb-3 block">
+              <Label className="text-sm font-semibold text-gray-900 mb-3 block">
                 Target Role
               </Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="border-gray-200 bg-white">
+                <SelectTrigger className="border-violet-200 bg-white hover:border-violet-300 rounded-xl h-12 focus:ring-violet-500 focus:border-violet-500">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {ROLES.map((r) => (
                     <SelectItem key={r} value={r}>
                       {r}
@@ -109,7 +117,7 @@ export default function NewInterviewPage() {
 
             {/* Interview Type */}
             <div>
-              <Label className="text-sm font-semibold text-gray-700 mb-3 block">
+              <Label className="text-sm font-semibold text-gray-900 mb-3 block">
                 Interview Type
               </Label>
               <div className="grid grid-cols-3 gap-3">
@@ -117,10 +125,10 @@ export default function NewInterviewPage() {
                   <button
                     key={type}
                     onClick={() => setInterviewType(type)}
-                    className={`px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                    className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                       interviewType === type
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "gradient-purple text-white shadow-purple"
+                        : "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-100"
                     }`}
                   >
                     {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -131,7 +139,7 @@ export default function NewInterviewPage() {
 
             {/* Difficulty */}
             <div>
-              <Label className="text-sm font-semibold text-gray-700 mb-3 block">
+              <Label className="text-sm font-semibold text-gray-900 mb-3 block">
                 Difficulty Level
               </Label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -139,13 +147,13 @@ export default function NewInterviewPage() {
                   <button
                     key={key}
                     onClick={() => setDifficulty(key)}
-                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                       difficulty === key
-                        ? `${config.color.split(" ")[0]} border-blue-600 shadow-md`
+                        ? `${config.activeColor} shadow-purple`
                         : `${config.color} border-transparent`
                     }`}
                   >
-                    <div className={`inline-block px-2 py-1 rounded text-xs font-semibold mb-2 ${config.badge}`}>
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${config.badge}`}>
                       {config.title}
                     </div>
                     <p className="text-sm text-gray-700">{config.description}</p>
@@ -156,7 +164,7 @@ export default function NewInterviewPage() {
 
             {/* Duration */}
             <div>
-              <Label className="text-sm font-semibold text-gray-700 mb-3 block">
+              <Label className="text-sm font-semibold text-gray-900 mb-3 block">
                 Session Duration
               </Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -164,10 +172,10 @@ export default function NewInterviewPage() {
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`px-4 py-3 rounded-full font-medium text-sm transition-all ${
+                    className={`px-4 py-3 rounded-full font-medium text-sm transition-all duration-200 ${
                       duration === d
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "gradient-purple text-white shadow-purple"
+                        : "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-100"
                     }`}
                   >
                     {d} min
@@ -176,27 +184,27 @@ export default function NewInterviewPage() {
               </div>
             </div>
 
-            <Separator className="bg-gray-200" />
+            <Separator className="bg-violet-100" />
 
             {/* Summary */}
             {isFormValid && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Session Summary</p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-violet-50/80 border border-violet-200/50 rounded-xl p-5">
+                <p className="text-sm font-semibold text-gray-900 mb-3">Session Summary</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-600">Role</p>
+                    <p className="text-violet-700/60">Role</p>
                     <p className="font-semibold text-gray-900">{role}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Type</p>
+                    <p className="text-violet-700/60">Type</p>
                     <p className="font-semibold text-gray-900 capitalize">{interviewType}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Difficulty</p>
+                    <p className="text-violet-700/60">Difficulty</p>
                     <p className="font-semibold text-gray-900 capitalize">{difficulty}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Duration</p>
+                    <p className="text-violet-700/60">Duration</p>
                     <p className="font-semibold text-gray-900">{duration} minutes</p>
                   </div>
                 </div>
@@ -205,8 +213,8 @@ export default function NewInterviewPage() {
 
             {/* Error Message */}
             {mutation.isError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-700">{mutation.error.message}</p>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm text-red-700 font-medium">{mutation.error.message}</p>
               </div>
             )}
 
@@ -221,7 +229,7 @@ export default function NewInterviewPage() {
                 })
               }
               disabled={!isFormValid || mutation.isPending}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full h-13 gradient-purple-pink text-white font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow-purple hover:shadow-purple-lg hover:opacity-90 transition-all text-base"
             >
               {mutation.isPending ? (
                 <>
@@ -236,118 +244,6 @@ export default function NewInterviewPage() {
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-  return res.json() as Promise<{ sessionId: string }>;
-}
-
-const DURATIONS = [15, 30, 45, 60] as const;
-
-export default function NewInterviewPage() {
-  const router = useRouter();
-  const [role, setRole] = useState("");
-  const [interviewType, setInterviewType] = useState("");
-  const [difficulty, setDifficulty] = useState("");
-  const [duration, setDuration] = useState(30);
-
-  const mutation = useMutation({
-    mutationFn: createSession,
-    onSuccess: (data) => router.push(`/interview/${data.sessionId}`),
-  });
-
-  return (
-    <div className="mx-auto max-w-lg py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>New mock interview</CardTitle>
-          <CardDescription>
-            Choose role, type, difficulty, and duration. We’ll generate questions and start the voice session.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Interview type</Label>
-            <Select value={interviewType} onValueChange={setInterviewType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Technical / Behavioral / Mixed" />
-              </SelectTrigger>
-              <SelectContent>
-                {INTERVIEW_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Difficulty</Label>
-            <Select value={difficulty} onValueChange={setDifficulty}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                {DIFFICULTIES.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Duration (minutes)</Label>
-            <Select
-              value={String(duration)}
-              onValueChange={(v) => setDuration(Number(v))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATIONS.map((d) => (
-                  <SelectItem key={d} value={String(d)}>
-                    {d} min
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            className="w-full"
-            disabled={!role || !interviewType || !difficulty || mutation.isPending}
-            onClick={() =>
-              mutation.mutate({
-                role,
-                interviewType,
-                difficulty,
-                duration,
-              })
-            }
-          >
-            {mutation.isPending ? "Creating session…" : "Start interview"}
-          </Button>
-          {mutation.isError && (
-            <p className="text-sm text-destructive">{mutation.error.message}</p>
-          )}
         </CardContent>
       </Card>
     </div>

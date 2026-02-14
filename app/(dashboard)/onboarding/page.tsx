@@ -11,7 +11,7 @@ async function completeOnboarding(payload: {
   sessionDuration: number;
   voiceGender: string;
 }) {
-  const res = await fetch("/api/onboarding", {
+  const res = await fetch("/api/user/onboard", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

@@ -125,11 +125,6 @@ export default function SessionsPage() {
           <h1 className="text-3xl font-bold">Session History</h1>
           <p className="text-slate-600 mt-1">Review your interview practice sessions</p>
         </div>
-        <Link href="/interview/new">
-          <Button className="bg-blue-600 hover:bg-blue-700 rounded-lg">
-            New Interview
-          </Button>
-        </Link>
       </div>
 
       {/* Filter Bar */}
@@ -192,7 +187,7 @@ export default function SessionsPage() {
               <p className="text-lg font-medium text-slate-900">No sessions yet</p>
               <p className="text-slate-600 mt-1 mb-4">Start your first interview to build your practice history</p>
               <Link href="/interview/new">
-                <Button className="bg-blue-600 hover:bg-blue-700">Start Your First Interview</Button>
+                <Button className="gradient-purple-pink text-white shadow-purple hover:shadow-purple-lg hover:opacity-90 rounded-xl px-6 transition-all">Start Your First Interview</Button>
               </Link>
             </div>
           ) : (

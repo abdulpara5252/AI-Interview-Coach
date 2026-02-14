@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface ReadyStepProps {
   formData: {
@@ -29,7 +28,6 @@ export default function ReadyStep({ formData }: ReadyStepProps) {
   const [showCheckmark, setShowCheckmark] = useState(false);
 
   useEffect(() => {
-    // Trigger animation after mount
     const timer = setTimeout(() => setShowCheckmark(true), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -39,20 +37,12 @@ export default function ReadyStep({ formData }: ReadyStepProps) {
       {/* Animated Checkmark */}
       <div className="flex justify-center py-4">
         <div
-          className={`relative w-20 h-20 flex items-center justify-center rounded-full bg-green-50 border-2 border-green-500 transition-all duration-700 ${
+          className={`relative w-20 h-20 flex items-center justify-center rounded-full gradient-purple shadow-purple glow-purple transition-all duration-700 ${
             showCheckmark ? "scale-100 opacity-100" : "scale-0 opacity-0"
           }`}
         >
-          <div
-            className={`absolute inset-0 rounded-full border-2 border-green-500 transition-all duration-700 ${
-              showCheckmark ? "scale-0 opacity-0" : "scale-100 opacity-100"
-            }`}
-            style={{
-              animation: showCheckmark ? "pulse 0s" : "pulse 2s infinite",
-            }}
-          />
           <svg
-            className={`w-10 h-10 text-green-500 transition-all duration-500 ${
+            className={`w-10 h-10 text-white transition-all duration-500 ${
               showCheckmark ? "opacity-100 scale-100" : "opacity-0 scale-50"
             }`}
             fill="none"
@@ -70,63 +60,59 @@ export default function ReadyStep({ formData }: ReadyStepProps) {
       </div>
 
       {/* Heading */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-foreground">
-          You're all set!
+      <div className="space-y-3">
+        <h1 className="text-3xl font-bold text-gray-900">
+          You&apos;re all <span className="gradient-text-purple">set!</span>
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-lg text-violet-700/60">
           Your AI Interview Coach is ready to help you succeed
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-        <h3 className="font-semibold text-foreground text-left">Your Setup Summary</h3>
+      <div className="bg-violet-50/80 rounded-2xl p-6 space-y-4 border border-violet-100/50">
+        <h3 className="font-semibold text-gray-900 text-left">Your Setup Summary</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Target Role */}
-          <Card className="p-4 border-gray-200 bg-white">
+          <Card className="p-4 border-violet-100/50 bg-white rounded-xl shadow-purple-sm">
             <div className="text-left">
-              <p className="text-xs text-muted-foreground font-medium mb-1">
-                TARGET ROLE
+              <p className="text-xs text-violet-500 font-semibold mb-1 uppercase tracking-wider">
+                Target Role
               </p>
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-lg font-semibold text-gray-900">
                 {formData.targetRole}
               </p>
             </div>
           </Card>
 
-          {/* Experience Level */}
-          <Card className="p-4 border-gray-200 bg-white">
+          <Card className="p-4 border-violet-100/50 bg-white rounded-xl shadow-purple-sm">
             <div className="text-left">
-              <p className="text-xs text-muted-foreground font-medium mb-1">
-                EXPERIENCE LEVEL
+              <p className="text-xs text-violet-500 font-semibold mb-1 uppercase tracking-wider">
+                Experience Level
               </p>
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-lg font-semibold text-gray-900">
                 {EXPERIENCE_LABELS[formData.experience]}
               </p>
             </div>
           </Card>
 
-          {/* Session Duration */}
-          <Card className="p-4 border-gray-200 bg-white">
+          <Card className="p-4 border-violet-100/50 bg-white rounded-xl shadow-purple-sm">
             <div className="text-left">
-              <p className="text-xs text-muted-foreground font-medium mb-1">
-                SESSION DURATION
+              <p className="text-xs text-violet-500 font-semibold mb-1 uppercase tracking-wider">
+                Session Duration
               </p>
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-lg font-semibold text-gray-900">
                 {formData.sessionDuration} minutes
               </p>
             </div>
           </Card>
 
-          {/* Voice Preference */}
-          <Card className="p-4 border-gray-200 bg-white">
+          <Card className="p-4 border-violet-100/50 bg-white rounded-xl shadow-purple-sm">
             <div className="text-left">
-              <p className="text-xs text-muted-foreground font-medium mb-1">
-                VOICE PREFERENCE
+              <p className="text-xs text-violet-500 font-semibold mb-1 uppercase tracking-wider">
+                Voice Preference
               </p>
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-lg font-semibold text-gray-900">
                 {VOICE_LABELS[formData.voiceGender]}
               </p>
             </div>
@@ -136,26 +122,32 @@ export default function ReadyStep({ formData }: ReadyStepProps) {
 
       {/* What's Next */}
       <div className="space-y-3 pt-2">
-        <h3 className="font-semibold text-foreground">What's next?</h3>
+        <h3 className="font-semibold text-gray-900">What&apos;s next?</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="text-left p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-2xl mb-2">🎯</div>
-            <p className="font-semibold text-sm text-foreground">Get Started</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="text-left p-4 bg-violet-50/80 rounded-xl border border-violet-100/50 hover:border-violet-200 transition-colors">
+            <div className="w-10 h-10 gradient-purple rounded-xl flex items-center justify-center shadow-purple-sm mb-3">
+              <span className="text-lg">🎯</span>
+            </div>
+            <p className="font-semibold text-sm text-gray-900">Get Started</p>
+            <p className="text-xs text-violet-700/60 mt-1">
               Choose your first interview type
             </p>
           </div>
-          <div className="text-left p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-2xl mb-2">🗣️</div>
-            <p className="font-semibold text-sm text-foreground">Practice</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="text-left p-4 bg-violet-50/80 rounded-xl border border-violet-100/50 hover:border-violet-200 transition-colors">
+            <div className="w-10 h-10 gradient-purple rounded-xl flex items-center justify-center shadow-purple-sm mb-3">
+              <span className="text-lg">🗣️</span>
+            </div>
+            <p className="font-semibold text-sm text-gray-900">Practice</p>
+            <p className="text-xs text-violet-700/60 mt-1">
               Have a real interview conversation
             </p>
           </div>
-          <div className="text-left p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-2xl mb-2">📊</div>
-            <p className="font-semibold text-sm text-foreground">Improve</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="text-left p-4 bg-violet-50/80 rounded-xl border border-violet-100/50 hover:border-violet-200 transition-colors">
+            <div className="w-10 h-10 gradient-purple rounded-xl flex items-center justify-center shadow-purple-sm mb-3">
+              <span className="text-lg">📊</span>
+            </div>
+            <p className="font-semibold text-sm text-gray-900">Improve</p>
+            <p className="text-xs text-violet-700/60 mt-1">
               Get detailed feedback and track progress
             </p>
           </div>

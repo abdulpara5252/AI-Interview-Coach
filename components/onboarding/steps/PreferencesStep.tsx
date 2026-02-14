@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Check } from "lucide-react";
 
 interface PreferencesStepProps {
   sessionDuration: number;
@@ -32,10 +33,10 @@ export default function PreferencesStep({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          Set your preferences
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Set your <span className="gradient-text-purple">preferences</span>
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-violet-700/60">
           Customize your interview practice experience
         </p>
       </div>
@@ -43,10 +44,10 @@ export default function PreferencesStep({
       {/* Session Duration */}
       <div className="space-y-4">
         <div>
-          <Label className="text-base font-semibold text-foreground mb-3 block">
+          <Label className="text-base font-semibold text-gray-900 mb-3 block">
             ⏱️ Preferred session duration
           </Label>
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-sm text-violet-700/60 mb-3">
             How long do you want each practice session to be?
           </p>
         </div>
@@ -56,14 +57,14 @@ export default function PreferencesStep({
             <button
               key={option.value}
               onClick={() => onSessionDurationChange(option.value)}
-              className={`p-3 rounded-lg border-2 transition-all duration-200 text-center ${
+              className={`p-4 rounded-xl border-2 transition-all duration-200 text-center group ${
                 sessionDuration === option.value
-                  ? "border-primary bg-blue-50 shadow-md"
-                  : "border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white"
+                  ? "border-violet-500 bg-violet-50 shadow-purple"
+                  : "border-violet-100 hover:border-violet-200 hover:shadow-purple-sm bg-white"
               }`}
             >
-              <div className="font-bold text-foreground">{option.label}</div>
-              <div className="text-xs text-muted-foreground">{option.description}</div>
+              <div className="font-bold text-gray-900">{option.label}</div>
+              <div className="text-xs text-violet-700/60 mt-1">{option.description}</div>
             </button>
           ))}
         </div>
@@ -72,11 +73,11 @@ export default function PreferencesStep({
       {/* Voice Gender */}
       <div className="space-y-4">
         <div>
-          <Label className="text-base font-semibold text-foreground mb-3 block">
+          <Label className="text-base font-semibold text-gray-900 mb-3 block">
             🎤 Voice gender preference
           </Label>
-          <p className="text-sm text-muted-foreground mb-3">
-            Choose the voice you'd like for your AI coach
+          <p className="text-sm text-violet-700/60 mb-3">
+            Choose the voice you&apos;d like for your AI coach
           </p>
         </div>
 
@@ -85,22 +86,27 @@ export default function PreferencesStep({
             <Card
               key={option.value}
               onClick={() => onVoiceGenderChange(option.value)}
-              className={`p-4 cursor-pointer transition-all duration-200 text-center ${
+              className={`p-5 cursor-pointer transition-all duration-200 text-center rounded-xl group ${
                 voiceGender === option.value
-                  ? "border-primary border-2 bg-blue-50 shadow-md"
-                  : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                  ? "border-2 border-violet-500 bg-violet-50 shadow-purple"
+                  : "border-violet-100/50 hover:border-violet-200 hover:shadow-purple-sm bg-white"
               }`}
             >
-              <div className="text-3xl mb-2">{option.emoji}</div>
-              <div className="font-semibold text-foreground">{option.label}</div>
+              <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">{option.emoji}</div>
+              <div className="font-semibold text-gray-900">{option.label}</div>
+              {voiceGender === option.value && (
+                <div className="mt-2 mx-auto w-5 h-5 rounded-full gradient-purple flex items-center justify-center">
+                  <Check className="h-3 w-3 text-white" />
+                </div>
+              )}
             </Card>
           ))}
         </div>
       </div>
 
       {/* Summary */}
-      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <p className="text-sm text-green-900">
+      <div className="p-4 bg-violet-50 border border-violet-200/50 rounded-xl">
+        <p className="text-sm text-violet-800">
           ✓ Your preferences are set. You can change these anytime in settings.
         </p>
       </div>

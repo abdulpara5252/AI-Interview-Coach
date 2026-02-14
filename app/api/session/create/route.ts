@@ -51,7 +51,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Body must be an object" }, { status: 400 });
+    }
+
     const role = typeof body.role === "string" ? body.role.trim() : "";
     const interviewType = typeof body.interviewType === "string" ? body.interviewType.trim() : "";
     const difficulty = typeof body.difficulty === "string" ? body.difficulty.trim() : "";
@@ -73,32 +82,58 @@ export async function POST(req: Request) {
       .replace(/\{role\}/g, role)
       .replace(/\{interviewType\}/g, interviewType);
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: "Generate the questions now." },
-      ],
-      response_format: { type: "json_object" },
-    });
+    let content: string | null = null;
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Generate the questions now. Return a JSON object with a 'questions' key containing the array." },
+        ],
+        response_format: { type: "json_object" },
+      });
+      content = completion.choices[0]?.message?.content ?? null;
+    } catch (openaiError: unknown) {
+      const errMsg = openaiError instanceof Error ? openaiError.message : "Unknown OpenAI error";
+      console.error("[SESSION_CREATE_OPENAI_ERROR]", errMsg);
+      return NextResponse.json(
+        { error: "Failed to generate questions", details: process.env.NODE_ENV === "development" ? errMsg : undefined },
+        { status: 502 }
+      );
+    }
 
-    const content = completion.choices[0]?.message?.content;
     if (!content) {
-      return NextResponse.json({ error: "No questions generated" }, { status: 500 });
+      return NextResponse.json({ error: "No questions generated — empty OpenAI response" }, { status: 500 });
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch {
-      return NextResponse.json({ error: "Invalid question JSON" }, { status: 500 });
+      console.error("[SESSION_CREATE_PARSE_ERROR]", content.substring(0, 500));
+      return NextResponse.json({ error: "Invalid question JSON from AI" }, { status: 500 });
     }
 
-    const rawQuestions = Array.isArray(parsed)
-      ? parsed
-      : (parsed as { questions?: unknown[] })?.questions ?? [];
-    if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
-      return NextResponse.json({ error: "No questions in response" }, { status: 500 });
+    // GPT-4o json_object mode always returns an object; questions may be at top level or nested
+    let rawQuestions: unknown[];
+    if (Array.isArray(parsed)) {
+      rawQuestions = parsed;
+    } else if (parsed && typeof parsed === "object") {
+      // Try common keys: "questions", "interview_questions", or first array-valued key
+      const obj = parsed as Record<string, unknown>;
+      if (Array.isArray(obj.questions)) {
+        rawQuestions = obj.questions;
+      } else {
+        const firstArrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
+        rawQuestions = firstArrayKey ? (obj[firstArrayKey] as unknown[]) : [];
+      }
+    } else {
+      rawQuestions = [];
+    }
+
+    if (rawQuestions.length === 0) {
+      console.error("[SESSION_CREATE_EMPTY]", JSON.stringify(parsed).substring(0, 500));
+      return NextResponse.json({ error: "No questions in AI response" }, { status: 500 });
     }
 
     const session = await prisma.session.create({
@@ -131,8 +166,12 @@ export async function POST(req: Request) {
         orderBy: { order: "asc" },
       }),
     });
-  } catch (error) {
-    console.error("[SESSION_CREATE_ERROR]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[SESSION_CREATE_ERROR]", errMsg, error);
+    return NextResponse.json(
+      { error: "Internal server error", details: process.env.NODE_ENV === "development" ? errMsg : undefined },
+      { status: 500 }
+    );
   }
 }
